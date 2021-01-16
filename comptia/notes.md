@@ -84,16 +84,79 @@ responsible for handling both incoming and outgoing email messages on the server
 
 ##### NFS
 
+the _network file system_ (NFS) is a protocol used to share folders in a network environment. with NFS, a linux system can share a protion of its virtual directory on the network to allow access by clients as well as other servers. **nfs-utils**. using the nfs-utils, your linux system can mount remotely shared NFS folders almost as easily as if they were on a local hard drive partition.
+
 ##### samba
+
+default sharing method used in _windows_ : system message block (SMB) - it allows to interact with windows servers and clients using smb. the samba software package was created to allow linux systems to interact with windows clients and servers.
 
 #### print servers
 
+the standard linux print sharing software package is called _common unix printing system_ (CUPS cups). the cups software allows a linux system to connect to any printer resource, either locally or via a network, by using a common application interface that aoperates over dedicated printer drives. the key to cups is the printer drivers. for connection to network printers, cups uses the _internetp printing protocol_ (IPP ipp).
+
 #### network resource servers
 
-#### name servers 
+- ip addesses: dynamic host configuration protocol - DHCP dhcp. clients can request a valid IP address for the network from a DHCP server. a centrap dhcp server keeps track of the ip addresses assigned, ensuring that no two clients receive the same ip address. once you have the DHCPd server running on your network, you'll need to tell your linux clients to use it to obtain their network addresses. this requires a dhcp client software package. for linux dhcp clients, there are three popular packages: 1) dhclient (mostused on debian and RH based systems) 2) dhcpd 3) pump
+- logging: there are two main logging packages used in linux, and which one a system uses depends on the startup software it uses: 1) rsyslogd: the sysvinit and upstart systems utilize the rsyslogd service program to accept logging data from remote servers 2) journald: the systemd system utilizes the journald service for both local and remote logging of system information.
+- name servers: domain name system (DNS dns) dns maps ip addresses to a host naming scheme on network. a dns server acts as a directory lookup to find the names of servers on the local network. the main program in BIND is _named_, the server daemon that runs on linux servers and resolves hostnames to ip addresses for clients on the local network.
+- network management: the _simple network management protocol_ (SNMP snmp) provides a way for an administrator to query remote network devices and severs to obtain information about thier configuration, status, and even performance. the most popular snmp software package in linux is the open-source _net-snmp_ package.
+- time: for many network applications to work correctly, both servers and clients need to have their internal clocks coordinated with the same time. the network time protocol (ntp) accomplishes this. it allows servers and clients to synchronize on the same time source across multiple networks, adding or subtracting fractions of a seecond as needed to stay in sync.
 
 ### implementing security
 
+#### authentication server
+
+the core security for linux servers is the standard userid and password assigned to each individual user on the system and stored in the _/etc/passwd_ and _/etc/shadow_ files. there are a few different methods for sharing user account dbs across multiple linux servers on a network.
+
+#### nis NIS
+
+the network information system is a directory service that allos both clients and servers to share a common naming directory - _nis-utils_. the nis snaming directory is often used as a common repository for user accounts, hostnames... the nis+ protocol expands on nis by adding security features.
+
+#### kerberos
+
+kerberos was devolped as a secure authentication protocol. it uses symmetric-key cryptography to securely authenticate users with a centralized server database. the entire authentication process is encrypted, making it a secure method of logging into a linux server. _kerberos database_. 
+
+#### ldap LDAP
+
+network authentication system. the _lightweight directory access protocol_ provides a simple network authentification service to multiple applications and devices on a local network. the most popular implementation of ldap in the linux world is the _openldap_ openLDAP package. openldap allows you to design a hierarchical db to store objects in your network.
+
+The hirerachical dbs allow you to group objects by types, such as users and servers, or by location, or both. this provides a very flexible way of designing authentication for your local network.
+
+The openldap package consists of both client and server programs. the client program allows systems to access an openldap server to authentication requests make by clients of other network objects.
+
+#### certificate authority
+
+method of authenticating users by _certificates_. a certificate is an encrypted key that implements a two-factor authentication method. to log into a server, a user must have a certificate file and know a pin. it's important that the server trusts the certificate. for that, you need a certificate authority. the openssl package provides standard certificate functions for both servers and clients. you can setup your linux server to create certificates for clients and then authenticate them for network applications.
+
+#### access server (SSH)
+
+the secure shell provides a layer of enryption around data sent across the network.
+
+#### virtual private networks - vpn VPN
+
+the solution to remotely connecting to resources on a local network is the vpn protocol. the vpn protocol creates a secure point-to-point tunnel between a remote client or server and a vpn server on your local network. this provides a secure method for remotely accessing any server on your local network. in linux, the most popular vpn solution is the openVPN openvpn package. the openvpn package runs as a server service on a linux server on your local network.
+
+#### proxy server
+
+a web proxy server allows you to intercept web requests from local network clients. by intercepting the web requests, you have control of how clients interact with remote web servers. the web proxy server can block websites you don't want your network clients to see, and the server can cache common websites so that future requests for the same pages load faster. the most popular web proxy server in linus is the _squid_ package.
+
+#### monitoring
+
+there are several monitoring tools available in the linux world. the nagios software package is quickly becoming a popular tool, especially in cloud linux systems. nagios uses snmp to monitor the performance and logs of linux servers and provide results in a simple graphical window environment.
+
+### improving performance
+
+#### clustering
+
+a computer cluster improves application performance by dividing application functions among multiple servers. each server node in the cluster is configured the same and can perform the same functions, but the cluster management software determines how to split the application functions among the servers. since each server in the cluster is working on only part of the application, you can use less powerful servers within the cluster than if you had to run the entire application on a single server. some clustering technologies are apache hadoop and linux virtual server.
+
+#### load balancing
+
+load balancing is a special application of clustering. a load balancer redirects entire cient request to one of a cluster of servers. while a single server processes the entire request, the client load is distributed amond the multiple servers automatically. common linux load balancing include haproxy, linux virtual server and even nginx.
+
+#### containers
+
+linxu containers create a self-contained environment to encapsulate aplications. a container packages all of the necessary applicaiton files, library files, and OS libraries into a bundle that you can easily move between environments. currently, the two most popular ones are docker and kubernetes.
 
 
 
