@@ -1,6 +1,6 @@
 # comptia
 
-## Chapter 2 - sifting through services
+## chapter 2 - sifting through services
 
 - daemon: a linux service program that runs as a backup process
 
@@ -98,7 +98,7 @@ the standard linux print sharing software package is called _common unix printin
 
 - ip addesses: dynamic host configuration protocol - DHCP dhcp. clients can request a valid IP address for the network from a DHCP server. a centrap dhcp server keeps track of the ip addresses assigned, ensuring that no two clients receive the same ip address. once you have the DHCPd server running on your network, you'll need to tell your linux clients to use it to obtain their network addresses. this requires a dhcp client software package. for linux dhcp clients, there are three popular packages: 1) dhclient (mostused on debian and RH based systems) 2) dhcpd 3) pump
 - logging: there are two main logging packages used in linux, and which one a system uses depends on the startup software it uses: 1) rsyslogd: the sysvinit and upstart systems utilize the rsyslogd service program to accept logging data from remote servers 2) journald: the systemd system utilizes the journald service for both local and remote logging of system information.
-- name servers: domain name system (DNS dns) dns maps ip addresses to a host naming scheme on network. a dns server acts as a directory lookup to find the names of servers on the local network. the main program in BIND is _named_, the server daemon that runs on linux servers and resolves hostnames to ip addresses for clients on the local network.
+- name servers: domain name system (DNS dns) dns maps ip addresses to a host naming scheme on network. a dns server acts as a directory lookup to find the names of servers on the local network. the main program in BIND bind is _named_, the server daemon that runs on linux servers and resolves hostnames to ip addresses for clients on the local network.
 - network management: the _simple network management protocol_ (SNMP snmp) provides a way for an administrator to query remote network devices and severs to obtain information about thier configuration, status, and even performance. the most popular snmp software package in linux is the open-source _net-snmp_ package.
 - time: for many network applications to work correctly, both servers and clients need to have their internal clocks coordinated with the same time. the network time protocol (ntp) accomplishes this. it allows servers and clients to synchronize on the same time source across multiple networks, adding or subtracting fractions of a seecond as needed to stay in sync.
 
@@ -157,6 +157,32 @@ load balancing is a special application of clustering. a load balancer redirects
 #### containers
 
 linxu containers create a self-contained environment to encapsulate aplications. a container packages all of the necessary applicaiton files, library files, and OS libraries into a bundle that you can easily move between environments. currently, the two most popular ones are docker and kubernetes.
+
+
+1. b
+2. a
+3. a < X c
+4. b
+5. a
+6. c
+7. b
+8. c
+9. d
+10. b
+11. a,b
+12. c
+13. d
+14. b
+15. c
+16. a
+17. c
+18. c
+19. a
+20. c
+
+## chapter 3 - managing files, directories, and text
+
+
 
 
 
