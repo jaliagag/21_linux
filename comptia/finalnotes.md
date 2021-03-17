@@ -27,6 +27,10 @@
 11. ifconfig: check the IP address
 12. dig: interrogating DNS name servers. it performs DNS lookups and displays the answers that are returned from the name servers.
 13. nslookup: query domain name servers and resolving IP
-14. route
-15. arp:
+14. nc: allows 2 computers to connect and share resources - wide range of functionalities. it can also be used to send and receive files <https://linuxhandbook.com/nc-command/>
+  - `-l <PORT>` on the listening machine. + `-u` UDP connection
+  - `<IP> <PORT>` establishes a connection
+  - `-v -n 127.0.0.1 1-100` checks the first 100 ports
+16. route
+17. arp:
 
