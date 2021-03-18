@@ -31,6 +31,7 @@
   - `-l <PORT>` on the listening machine. + `-u` UDP connection
   - `<IP> <PORT>` establishes a connection
   - `-v -n 127.0.0.1 1-100` checks the first 100 ports
+15. iptables
 16. route
 17. arp:
 
