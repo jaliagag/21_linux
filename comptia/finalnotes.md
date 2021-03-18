@@ -35,3 +35,6 @@
 16. route: used to view and make changes to the kernel routing table
 17. arp: manipulates or displays de kernel's IPv4 network neighbour cache. it can add entries to the table, delte one, or display the current content.
 
+## Config files
+
+
