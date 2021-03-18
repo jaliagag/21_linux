@@ -31,7 +31,7 @@
   - `-l <PORT>` on the listening machine. + `-u` UDP connection
   - `<IP> <PORT>` establishes a connection
   - `-v -n 127.0.0.1 1-100` checks the first 100 ports
-15. iptables
+15. iptables: configure specific rules that will be enforced by the kernel's `netfilter` network. It acts as a packet filter and firewall that examines and directs traffic based on port, protocol and other criteria
 16. route
 17. arp:
 
