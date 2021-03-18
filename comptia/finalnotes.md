@@ -21,7 +21,7 @@
   - `-r` display the routing table. * means no gateway defined
   - `-l` shows only listening sockets
 8. ss: 
-  - `-t` `-a` to list all TCP sockets (listening and non-listening sockets
+  - `-t` `-a` to list all TCP sockets (listening and non-listening sockets)
 9. ssh: to connect securely with remote hosts over the internet. OpenSSH msut be installed
 10. scp and sftp
 11. ifconfig: check the IP address
@@ -32,6 +32,6 @@
   - `<IP> <PORT>` establishes a connection
   - `-v -n 127.0.0.1 1-100` checks the first 100 ports
 15. iptables: configure specific rules that will be enforced by the kernel's `netfilter` network. It acts as a packet filter and firewall that examines and directs traffic based on port, protocol and other criteria
-16. route
-17. arp:
+16. route: used to view and make changes to the kernel routing table
+17. arp: manipulates or displays de kernel's IPv4 network neighbour cache. it can add entries to the table, delte one, or display the current content.
 
