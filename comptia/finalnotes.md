@@ -20,12 +20,12 @@
   - `-i` to list the network interfaces on your system (_same as ip link_)
   - `-r` display the routing table. * means no gateway defined
   - `-l` shows only listening sockets
-8. **ss**: 
+8. **ss**: which program is listening on which open port `-anpt` <-- typical option
   - `-t` `-a` to list all TCP sockets (listening and non-listening sockets)
   - `-an` all sessions without names
 9. **ssh**: to connect securely with remote hosts over the internet. OpenSSH msut be installed
 10. **scp** and **sftp**
-11. **ifconfig**: check the IP address
+11. **ifconfig**: check the IP address - being replaced by up, which adds router values
 12. **dig**: interrogating DNS name servers. it performs DNS lookups and displays the answers that are returned from the name servers.
 13. **nslookup**: query domain name servers and resolving IP
 14. **nc**: allows 2 computers to connect and share resources - wide range of functionalities. it can also be used to send and receive files <https://linuxhandbook.com/nc-command/>
@@ -85,19 +85,35 @@ Network manager - nmcli
 	- sudo nmcliconnection reload
 	- nmcli
 
+## chapter 7 - configuring network connections
+
+Config files:
+
+- Debian: /etc/network/ or /etc/netplan/
+- RedHat: /etc/sysconfig/network-scripts/
+- openSUSE: /etc/sysconfig/network
+
+For RH based systems we need to files:
+
+1. defines network and netmask, file named after the network interface (e.g., ifcfg-enp0s3)
+2. **network** file defines the hostname and default gateway
+
+/etc/nsswitch.conf: defines the order in which Linux checks DNS, /etc/hosts before or after using DNS to look up the hostname.
+/etc/resolv.cfg: define a DNS server so taht the system can use DNS hostname
+
 ## Network troubleshooting
 
-	1. ping ping6 (ipv6)
-	2. traceroute routers in between
-	3. tracepath dns
-	4. nslookup url 1.1.1.1
-	5. dig 
-	6. ss -an -atp -tp --route
-	7. tcdump gets everything but app data
-		a. tcpdump -i <INTERFACE> > testFile
-	8. wireshark 
-	9. netcat 
-		a. nc itpro.tv 80
+1. ping ping6 (ipv6)
+2. traceroute routers in between
+3. tracepath dns
+4. nslookup url 1.1.1.1
+5. dig 
+6. ss -an -atp -tp --route
+7. tcdump gets everything but app data
+	a. tcpdump -i <INTERFACE> > testFile
+8. wireshark 
+9. netcat 
+	a. nc itpro.tv 80
 
 ## firewalld iptables
 
