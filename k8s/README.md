@@ -38,6 +38,45 @@ docker run asdf figlet hola
 # nos debería correr con la imagen creada anteriormente
 
 # Docker file
+# Siempre arranca con FROM para indicar que se basa en otra imagen - no tienen interacciones los docker files
+vi Dockerfile
+# ----------
+FROM ubuntu
+
+RUN apt-get update && apt-get install figlet -y
+# ----------
+
+docker build -t midocker:1.1 .
+
+docker image history <contID>
+# muestra comandos originales del ubuntu
+
+# al mismo archivo le agregamos
+# ----------
+RUN touch /tmp/hola
+# ----------
+# construimos otra imagen con el nuevo docker file actualizado
+docker build -t midocker:1.2 .
+# mucho más rápido pues debería estar cacheado
+#########
+docker run -d ngingx:1.15.7
+# -d dejar coriendo un contenedor en background - debe correr un servicio, no un comando que entra y saletipo ls
+docker exec -it <contID> <command>
+# VOLÚMENES: en docker podemos montar en el contenedor un archivo que está en el host
+docker stop <contID>
+docker run -v <path of source file or complete dir to run>:<destionation inside container>:<read only? -ro> -d <contID> 
+# docker run -v /home/jaliaga/Documents/GitHub/21_linux/k8s/volume/index.html:/usr/share/nginx/html/index.html:ro -d nginx:1.15.7
+# -p expone un puerto desde el contenedor hacia el host
+docker run -v <path of source file or complete dir to run>:<destionation inside container>:<read only? -ro> -p <puerto del host>:<a cuál apunta en el contenedor> -d <contID> 
+# docker run -v /home/jaliaga/Documents/GitHub/21_linux/k8s/volume/index.html:/usr/share/nginx/html/index.html:ro -p 8080:80 -d nginx:1.15.7
+
+
+
+
+
+
+
+
 
 ```
 
