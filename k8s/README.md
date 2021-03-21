@@ -78,9 +78,39 @@ docker run -v <path of source file or complete dir to run>:<destionation inside 
 # </html>
 # [jaliaga@osboxes k8s]$
 
+#########
+# pasar variables con -e
+docker run -e MYSQL_ROOT_PASSWORD=miclave -e MYSQL_DATABASE=midb -v /home/jaliaga/mysql-data:/var/lib/mysql -d mysql:8.0.13
+# docker-compose - crear todos los contenedores que necesito en un archivo yml
+# ----------
+version: '3.1'
 
+services:
 
+  wordpress:
+    image: wordpress:php7.2-apache
+    ports:
+      - 8080:80
+    environment:
+      WORDPRESS_DB_HOST: mysql
+      WORDPRESS_DB_USER: root
+      WORDPRESS_DB_PASSWORD: root
+      WORDPRESS_DB_NAME: wordpress
+    links:
+      - mysql:mysql
 
+  mysql:
+    image: mysql:8.0.13
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_DATABASE: wordpress
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - /home/jaliaga/docker/mysql-data:/var/lib/mysql
+
+# ----------
+# while on the folder where the docker-compose file is 
+docker-compose up -d
 
 
 
