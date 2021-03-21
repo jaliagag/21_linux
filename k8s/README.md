@@ -69,6 +69,15 @@ docker run -v <path of source file or complete dir to run>:<destionation inside 
 # -p expone un puerto desde el contenedor hacia el host
 docker run -v <path of source file or complete dir to run>:<destionation inside container>:<read only? -ro> -p <puerto del host>:<a cuál apunta en el contenedor> -d <contID> 
 # docker run -v /home/jaliaga/Documents/GitHub/21_linux/k8s/volume/index.html:/usr/share/nginx/html/index.html:ro -p 8080:80 -d nginx:1.15.7
+# desde el host: curl localhost:8080 y...
+# [jaliaga@osboxes k8s]$ curl localhost:8080
+# <html>
+# 	<body>
+# 		<h1>Hola desde Dockercillio</h1>
+# 	</body>
+# </html>
+# [jaliaga@osboxes k8s]$
+
 
 
 
