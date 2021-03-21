@@ -111,12 +111,28 @@ services:
 # ----------
 # while on the folder where the docker-compose file is 
 docker-compose up -d
-
-
-
-
-
-
+#########
 ```
+
+Networking en Docker
+
+5 tipos de drivers en docker:
+
+1. brdige: la interfaz de red del host le pasa toda la comunicación al contenedor
+2. host: "bindea" todos los puertos en tu máquina y pasa derecho al contenedor. usa la misma IP que el host, no hay NAT, pasa derecho.
+3. overlay: crear redes virtuales entre los contenedores - misma red para varios nodos. Facilita la comunicación entre los contenedores.
+4. macvlan: asignar una MAC a un contenedor para que el contenedor corrar como si fuera otra máquina más 
+5. none: desactiva el networking del contenedor
+
+
+
+
+
+
+
+
+
+
+
 
 
