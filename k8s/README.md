@@ -124,6 +124,56 @@ Networking en Docker
 4. macvlan: asignar una MAC a un contenedor para que el contenedor corrar como si fuera otra máquina más 
 5. none: desactiva el networking del contenedor
 
+## udemy course
+
+Installing Docker on ubuntu VM
+
+```console
+sudo su -
+sudo apt install docker.io -y
+```
+
+docker commands
+
+```console
+docker version
+docker run hello-world
+docker run docker/whalesay cowsay boo
+```
+
+container orchestration: automatically scale up or down based on the load. App is highly available - user traffic is load balanced, scale up and down
+
+Kubernetes: container orchestration technology used to orchestrate the deployment and management of hundreds and thousands of containers in a clustered environment.
+
+- Node: a machine, physical or virtual, on which kubernetes is installed. a Node is a worker machine and that is _where containers will be launched by k8s_. nodes aka minions.
+- cluster: a set of nodes grouped together - if one node fails, the app is still accessible. having multiple loads helps with sharing load.
+- master: responsible for managing the cluster - another node with kubernetes installed on it. it's responsible for the actual orchestration of the containers on the worker nodes.
+
+when you install kubernetes on a system you are installing:
+
+- API Server: front end for kubernetes cluster
+- etcd service or etcd key store: distributed reliable key value used by kubernetes to store all data used to manage the cluster. responsible for implementing locks within the cluster to ensure that there are no conflicts between the masters
+- kubelet: the agent that runs on each node of the cluster. it's responsible for making sure that containers are running on the nodes as expected.
+- container runtime: underlying software that is used to run containers - in this case, Docker.
+- controller: the brains behind orchestration. responsible for noticing and responding when nodes go down. it makes decission to bring up new containers in such cases. 
+- scheduler: distributing load accross multiple nodes. it looks for newly created containers.
+
+| Master | Worker |
+| ---- | ----- |
+| kube-apiserver| kubelet agent|
+| etcd | |
+| controller | |
+| scheduler | |
+| | container runtime (Docker)|
+
+`kubectl` : used to deploy and manage applications on a k8s cluster. to deploy an app: `kubectl run hello-minikube`. view information about a cluster: `kubectl cluster-info`. view all the nodes part of the cluster: `kubectl get nodes`
+
+
+
+
+
+
+
 
 
 
