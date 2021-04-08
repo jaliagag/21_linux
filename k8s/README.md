@@ -168,6 +168,29 @@ when you install kubernetes on a system you are installing:
 
 `kubectl` : used to deploy and manage applications on a k8s cluster. to deploy an app: `kubectl run hello-minikube`. view information about a cluster: `kubectl cluster-info`. view all the nodes part of the cluster: `kubectl get nodes`
 
+<https://kodekloud.com/courses/kubernetes-for-the-absolute-beginners-hands-on/lectures/5995932>
+
+- `kubectl version`
+- `kubectl get nodes -o wide` --> view human readable information
+- `kubectl get pods` view avialable PODS
+- `kubectl get pods -o wide` view pod ip add
+- `minikube start`
+
+PODS: the application is already developed on a docker image and on a docker repository. the k8s cluster is already setup.
+
+objective of k8s: deploy application on containers on a set of machines configured as worker nodes on a cluster. k8s does not deploy containers directly on the worker nodes - containers are encapsulated into a k8s object, known as pods. a POD is a single instance of an application. a pod is the smallest object that you can create in k8s. 1 POD = 1 instance/container. to scale up you create new pods.
+
+a single POD can have multiple containers but not of the same kind. there might be a helper container
+
+- helper container: supporting task
+
+helper and main container can communicate with each other using localhost port since they share the same network space. they can also share the same storage space. it's not that common to have 2 containers on a single pod
+
+to deploy a pod: `kubectl run nginx --image nginx` --> it creates a docker container by creating a POD.
+
+- `kubectl describe pods` : get more infor
+
+
 
 
 
