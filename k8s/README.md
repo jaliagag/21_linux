@@ -190,7 +190,144 @@ to deploy a pod: `kubectl run nginx --image nginx` --> it creates a docker conta
 
 - `kubectl describe pods` : get more infor
 
+yaml failes, pod-definition.yml, always contain 4 fields:
 
+```yml
+# 
+apiVersion: v1
+kind: Pod
+# POD
+# Service
+# ReplicaSet
+# Deployment
+metadata: 
+  name: myapp-pod
+  labels:
+    app: myapp
+    type: front-end
+# this is a dictionary
+spec:   # dictionary
+  containers:   # list/array
+    - name: nginx-container
+      image: nginx
+```
+
+run `kubectl create -f <file>.yml` to create a pod.
+
+- delete a pod: **kubectl delete pod <podName>**
+
+Controllers are the brains behind k8s. processes that monitor k8s objects and respond accordingly.
+
+**Replication controller**. best practice is to have at least 2 pods running the same instance of an app in case one fails. replication controller helps you run multiple instances of a single pod in the cluster, thus providing HA. The replication controller does not need to be running 2 instances of the same pod - it can detect when a pod fails and spin up a new one. replication controller can also be used to balance the load. the replication controller can span multiple nodes accross the cluter. this technology is being replaced by replica set.
+
+**Replica set**. recommended way of setting up replication. 
+
+Creating a replication controller using yaml.
+
+```yml
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: myapp-rc
+  labels:
+    app: myapp
+    type: front-end
+spec:
+  template:
+    metadata:
+      name: myapp-pod
+      labels:
+        app: myapp
+        type: front-end
+    spec:
+      - name: nginx-container
+        image: nginx
+  replicas: 3
+```
+
+We use the template section to be used by the replication controller. To see the number of replicas that are running: `kubectl get replicationcontroller`.
+
+Replica Set:
+
+```yml
+apiVersion: apps/v1 # <-- important
+kind: ReplicaSet
+metadata:
+  name: myapp-replicaset
+  lables:
+    app: myapp
+    type: front-end
+spec:
+  template:
+    metadata:
+      name: myapp-pod
+      labels:
+        app: myapp
+        type: front-end
+    spec:
+      containers:
+        - name: ndingx-controller
+          image: nginx
+  replicas: 3
+  selector: 
+    matchLabels:
+      #type: front-end
+      app: myapp
+```
+
+selector section helps the replica set identify what pods fall under it. this is necessary because replica sets can also manage pods that were not created as part of the replica set creation, for instance, pods with the same label that were created prior to the deployment of the replica set.
+
+The selector is not a required field for replication controller but it's available.
+
+Labels and Selectors
+
+The role of replica sets is to monitor pods and deploy new ones in case they fail. It's a process that monitors the pods. In order for the replica set to monitor the pods, we have to create pods using labels.
+
+To update a replica set:
+
+1. update the number of replicas in the definition file, then run `kubectl replace -f <file>.yml`
+2. `kubectl scale --replicas=<q> -f <file>.yml`
+3. `kubectl scale --replicas=6 replicaset <file>` --> no modification of the file
+
+To delete a replica set: `kubectl delete replicaset myapp-replicaset`
+
+<https://gist.github.com/John-Lin/1dc063b6743f311561f2fe587e035c33>
+
+Deployment
+
+Deployment is a k8s object. Provides the capability to upgrade the underlying instances seamlessly. To create a deployment we create a definition file
+
+```yml
+apiVersion: apps/v1 
+kind: Deployment # main change
+metadata:
+  name: myapp-replicaset
+  lables:
+    app: myapp
+    type: front-end
+spec:
+  template:
+    metadata:
+      name: myapp-pod
+      labels:
+        app: myapp
+        type: front-end
+    spec:
+      containers:
+        - name: ndingx-controller
+          image: nginx
+  replicas: 3
+  selector: 
+    matchLabels:
+      #type: front-end
+      app: myapp
+```
+
+`kubectl get deployments | replicaset | pods`
+
+So far noy many differences between deployment and replica set; deployments create a new k8s _OBJECT_.
+
+`kubectl get all` - `kubectl describe deployment`
 
 
 
