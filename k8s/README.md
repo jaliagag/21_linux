@@ -301,8 +301,8 @@ Deployment is a k8s object. Provides the capability to upgrade the underlying in
 apiVersion: apps/v1 
 kind: Deployment # main change
 metadata:
-  name: myapp-replicaset
-  lables:
+  name: myapp-deployment
+  labels:
     app: myapp
     type: front-end
 spec:
@@ -316,6 +316,7 @@ spec:
       containers:
         - name: ndingx-controller
           image: nginx
+          # image: nginx:1.12-alpine
   replicas: 3
   selector: 
     matchLabels:
@@ -323,14 +324,42 @@ spec:
       app: myapp
 ```
 
+To create the deployment: `kubectl create -f <file>.yml`
+
 `kubectl get deployments | replicaset | pods`
 
 So far noy many differences between deployment and replica set; deployments create a new k8s _OBJECT_.
 
 `kubectl get all` - `kubectl describe deployment`
 
+Rollouts and version in a deployments: when you first create a deployment, it triggers a _rollout_. a new rollout  creteas a new _deployment revision_. A new version creates a new revision.
 
+- `kubectl rollout status deployment/myapp-deployment` --> see the status of the app rollout
+- `kubectl rollout history deployment/myapp-deployment` --> revision and history of the deployment
 
+Two deployment strategies.
+
+1. destroy all the instances at once and crete new instances; app is down and inaccessible. <-- **recreate** stratege
+2. we destroy instnaces one by one. app does not go down and the upgrade is seamless <-- **rolling** upgrade. This is the default rollout strategy.
+
+To update a deployment: we make modifications to the deployment file and then use `kubectl apply -f <file>.yml`. a new rollout  is triggered and a new revision is created. `kubectl set image deployment/myapp-deployment nginx-container=nginx:1.7.1` to update the image of the application
+
+Upgrades:
+
+1. creates a replica set that creates the number of pods to meet the number of repicas.
+2. on the new replica set, it creates the pod with the new version and then takes down one pod of the original replica set.
+
+`kubectl get replicasets`
+
+Rollback: `kubectl rollout undo deployment/myapp-deployment` - it destroys new pods and brings back previous.
+
+`kubectl run nginx --image=nginx` --> it creates a deployment, not just a pod.
+
+We can add the flag `--record` to save the command used to create the rollout.
+
+### Networking in k8s
+
+IP addresses are assigned to a POD. When k8s is initially ocnfigured, we create an internal private netwowk with an address. Each POD has a separate IP address.
 
 
 
