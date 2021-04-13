@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: db # names should be given by what the application is looking for (?)
+  labels:
+    name: db-service
+    app: demo-voting-app
+spec:
+  ports:
+    - port: 5432        # listen on 
+      targetPort: 5432  # forwards to
+  selector:   # we use the labels we used when creating PODs
+    name: postgres-pod
+    app: demo-voting-app

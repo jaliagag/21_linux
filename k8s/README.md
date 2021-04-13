@@ -448,3 +448,192 @@ spec:
     app: myapp
     type: back-end
 ```
+
+### Miniservices voting app
+
+```console
+# docker run -d --name=redis redis
+# docker run -d --name=db postgres:9.4
+# docker run -d --name=vote -p 5000:80 --link redis:redis voting-app
+# docker run -d --name=result -p 5001:80 --link db:db result-app
+# docker run -d --name=worker --link db:db --link redis:redis worker
+```
+
+Using the `--link` creates an entry to the /etc/hosts file on the app container
+
+Definition files for PODs
+
+```yml
+# voting-app-pod.yml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: voting-app-pod
+  labels:
+    name: voting-app-pod
+    app: demo-voting-app
+spec:
+  containers:
+    - name: voting-app
+      image: dockersamples/examplevotingapp_vote
+      ports:
+        - containerPort: 80
+
+# worker-app-pod.yml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: worker-app-pod
+  labels:
+    name: worker-app-pod
+    app: demo-voting-app
+spec:
+  containers:
+    - name: worker-app
+      image: dockersamples/examplevotingapp_worker
+
+# result-app-pod.yml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: result-app-pod
+  labels:
+    name: result-app-pod
+    app: demo-voting-app
+spec:
+  containers:
+    - name: result-app
+      image: dockersamples/examplevotingapp_result
+      ports:
+        - containerPort: 80
+
+# redis-pod.yml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: redis-pod
+  labels:
+    name: redis-pod
+    app: demo-voting-app
+spec:
+  containers:
+    - name: redis
+      image: redis
+      ports:
+        - containerPort: 6379
+
+# postgres-pod.yml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: postgres-pod
+  labels:
+    name: postgres-pod
+    app: demo-voting-app
+spec:
+  containers:
+    - name: postgres
+      image: postgres:9.4
+      ports:
+        - containerPort: 5432
+```
+
+Definition files for Services
+
+```yml
+# redis-service.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  labels:
+    name: redis-service
+    app: demo-voting-app
+spec:
+  ports:
+    - port: 6379        # listen on 
+      targetPort: 6379  # forwards to
+  selector:   # we use the labels we used when creating PODs
+    name: redis-pod
+    app: demo-voting-app
+
+# postgres-service.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: db # names should be given by what the application is looking for (?)
+  labels:
+    name: db-service
+    app: demo-voting-app
+spec:
+  ports:
+    - port: 5432        # listen on 
+      targetPort: 5432  # forwards to
+  selector:   # we use the labels we used when creating PODs
+    name: postgres-pod
+    app: demo-voting-app
+```
+
+Create a load balancer
+
+```yml
+# voting-app-service.yml this service will expose the app to the external world
+apiVersion: v1
+kind: Service
+metadata:
+  name: voting-service
+  labels:
+    name: voting-service
+    app: demo-voting-app
+spec:
+  type: LoadBalancer # this exposes the load balancer externally
+  ports:
+    - port: 80        # listen on 
+      targetPort: 80  # forwards to
+  selector:   # we use the labels we used when creating PODs
+    name: voting-app-pod
+    app: demo-voting-app
+
+# result-app-service.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: result-service
+  labels:
+    name: result-service
+    app: demo-voting-app
+spec:
+  type: LoadBalancer # this exposes the load balancer externally
+  ports:
+    - port: 80        # listen on 
+      targetPort: 80  # forwards to
+  selector:   # we use the labels we used when creating PODs
+    name: result-app-pod
+    app: demo-voting-app
+```
+
+```console
+kubectl create -f voting-app-pod.yml
+kubectl create -f voting-app-service.yml
+kubectl create -f redis-pod.yml
+kubectl create -f redis-service.yml
+kubectl create -f posgres-pod.yml
+kubectl create -f posgres-service.yml
+kubectl create -f worker-app-pod.yml
+kubectl create -f result-app-pod.yml
+kubectl create -f result-service.yml
+```
+
+![006](./assets/006.JPG)
+
+When we do `kubectl get services` and we get that the type is **ClusterIP**, that means it's an internal service.
+
+#### Using deployments
+
+Convert pods into deployments.
+
+## Setting up k8s environment
+
+### minikube
+
+
