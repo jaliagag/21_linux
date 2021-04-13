@@ -194,19 +194,19 @@ yaml failes, pod-definition.yml, always contain 4 fields:
 
 ```yml
 # 
-apiVersion: v1
-kind: Pod
+apiVersion: v1  # <----------MANDATORY
+kind: Pod   # <----------MANDATORY
 # POD
 # Service
 # ReplicaSet
 # Deployment
-metadata: 
+metadata:     # <----------MANDATORY
   name: myapp-pod
   labels:
     app: myapp
     type: front-end
 # this is a dictionary
-spec:   # dictionary
+spec:   # dictionary    <----------MANDATORY
   containers:   # list/array
     - name: nginx-container
       image: nginx
@@ -359,19 +359,92 @@ We can add the flag `--record` to save the command used to create the rollout.
 
 ### Networking in k8s
 
-IP addresses are assigned to a POD. When k8s is initially ocnfigured, we create an internal private netwowk with an address. Each POD has a separate IP address.
+IP addresses are assigned to a POD, each pod has a internal IP address. When k8s is initially ocnfigured, we create an internal private netwowk with an address and all pods are attached to it. Each POD has a separate IP address.
 
+- node 192.168.1.2
+  - pod 10.244.0.2
 
+IPs are reassigned when pods are destroyed (duh!).
 
+Communication between nodes
 
+![001](./assets/001.JPG)
 
+- All containers/PODs can communicate to one another without NAT
+- All nodes can communicate with all containers and vice-versa without NAT
 
+![002](./assets/002.JPG)
 
+```console
+kubectl get pods
+kubectl get pods -o wide
+```
 
+### Services
 
+Servicies enable communication between components. Enable loose coupling between microservices of an application.
 
+![003](./assets/003.JPG)
 
+External communication
 
+Something that allow us to map requests to the node running a pod from the outside. A k8s service comes into play: the service is an object that listens on a port and forwards requests on that port to a port on a pod running an app. **NodePort service**.
 
+Another type of service is **ClusterIP** - the service creates a virtual IP inside the cluster to enable communication between different services such as FE - BE servers.
 
+The third type is a **LoadNalancer** - distribute the load of FE servers, for instance.
 
+1. NodePort: there are three ports involved:
+   1. the port of the node - NodePort 30008 range 30000 - 32767
+   2. the port of the service - _the port_. from the POV of the service
+   3. the port of the pod - where the webserver is running - it's refered to as **target port**.
+  
+We use definition files to create a service:
+
+```yml
+# service-definition.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-service
+spec:
+  type: NodePort
+  ports:
+    - targetPort: 80
+      port: 80 # <-- mandatory
+      nodePort: 30008
+  selector:       # connection to the POD using LABELS - links the server to the POD
+    app: myapp
+    type: front-end
+```
+
+![004](./assets/004.JPG)
+
+```console
+kubectl create -f service-definition.yml
+kubectl get services
+
+curl http://<nodeIp>:30008
+```
+
+when there are multiple nodes, NodePort uses a random algorithm to assign load.
+
+when the app is on pods on different nodes, k8s creates a service that spans accross all the nodes on the cluster and maps the target port to the same node port on all the nodes in the cluster. this way we can access the app using any of the ips of the nodes on the cluster.
+
+![005](./assets/005.JPG)
+
+```yml
+# service-definition.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: back-end
+spec:
+  type: ClusterIP
+  ports:
+    - targetPort: 80
+      port: 80
+  selector:
+    app: myapp
+    type: back-end
+```
