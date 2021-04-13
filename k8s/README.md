@@ -630,9 +630,20 @@ When we do `kubectl get services` and we get that the type is **ClusterIP**, tha
 
 #### Using deployments
 
-Convert pods into deployments.
+Convert pods into deployments. Once I have all the files created i can use `kubectl create -f .` to make all the deployments.
+
+To update the number of replicas on the deployment we make the changes to the file and the `kubectl apply -f <file-modified>`.
 
 ## Setting up k8s environment
+
+setup a multinude node environment.
+
+1. multiple nodes; 1 master, 2 worker nodes
+2. install docker on all nodes
+3. install kubeadm on all nodes
+4. initialize master server
+5. k8s requires a special connector between the master and worker nodes - POD network
+6. join worker nodes to the master node
 
 ### minikube
 
