@@ -639,11 +639,95 @@ To update the number of replicas on the deployment we make the changes to the fi
 setup a multinude node environment.
 
 1. multiple nodes; 1 master, 2 worker nodes
+
+set static ips - disable swap (`swapoff -a` and comment swap line on **sudo vi /etc/fstab**)
+
 2. install docker on all nodes
+
+<https://docs.docker.com/engine/install/ubuntu/>
+
+```console
+sudo apt-get update
+
+sudo apt-get install \
+  apt-transport-https \
+  ca-certificates \
+  curl \
+  gnupg \
+  lsb-release
+
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+echo \
+"deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+$(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+sudo apt-get update
+
+sudo apt-get install docker-ce docker-ce-cli containerd.io
+```
+
 3. install kubeadm on all nodes
+
+<https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/>
+
+Update the apt package index and install packages needed to use the Kubernetes apt repository:
+
+```console
+sudo apt-get update
+sudo apt-get install -y apt-transport-https ca-certificates curl
+```
+
+Download the Google Cloud public signing key:
+
+```console
+sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+```
+
+Add the Kubernetes apt repository:
+
+```console
+echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+```
+
+Update apt package index, install kubelet, kubeadm and kubectl, and pin their version:
+
+```console
+sudo apt-get update
+sudo apt-get install -y kubelet kubeadm kubectl
+sudo apt-mark hold kubelet kubeadm kubectl
+```
+
 4. initialize master server
+
+Choose network we are going to use. This is used to configure _flannel_.
+
+```console
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=192.168.0.121  <-- master static ip
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+creating a POD network with flannel
+
+kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+
+SOURCE: https://github.com/flannel-io/flannel
+
+kubectl get pods --all-namespaces
+kubectl get svc --all-namespaces
+
+Then you can join any number of worker nodes by running the following on each as root:
+
+sudo kubeadm join 192.168.0.121:6443 --token qcj2nn.p38xg2plnsuoqmmi --discovery-token-ca-cert-hash sha256:da372877cdc1ba1a275dbda679d76bca487c72907c5e802cee17d3beaf9066bb <-- to be used on the PODs
+```
+
+you can confirm that it is working by checking that the **CoreDNS** Pod is Running in the output of `kubectl get pods --all-namespaces`
+
 5. k8s requires a special connector between the master and worker nodes - POD network
 6. join worker nodes to the master node
+
+<labs.play-with-k8s.com>
 
 ### minikube
 
