@@ -59,7 +59,8 @@ RUN touch /tmp/hola
 docker build -t midocker:1.2 .
 # mucho más rápido pues debería estar cacheado
 #########
-docker run -d ngingx:1.15.7
+docker up -d ngingx:1.15.7
+sudo docker run -d -p 80:80 --name=mynginx nginx
 # -d dejar coriendo un contenedor en background - debe correr un servicio, no un comando que entra y saletipo ls
 docker exec -it <contID> <command>
 # VOLÚMENES: en docker podemos montar en el contenedor un archivo que está en el host
@@ -710,7 +711,7 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
 creating a POD network with flannel
 
-kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+sudo kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
 
 SOURCE: https://github.com/flannel-io/flannel
 
@@ -727,7 +728,17 @@ you can confirm that it is working by checking that the **CoreDNS** Pod is Runni
 5. k8s requires a special connector between the master and worker nodes - POD network
 6. join worker nodes to the master node
 
-<labs.play-with-k8s.com>
+<https://labs.play-with-k8s.com>
+
+### what to do after reboot
+
+```console
+sudo kubeadm reset
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=192.168.0.121
+kubectl cluster-info dump
+kubectl config view
+
+```
 
 ### minikube
 

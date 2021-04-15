@@ -48,6 +48,13 @@ sudo usermod -aG sudo dockmaster
 ssh-keygen -t rsa
 ssh-copy-id dockmaster@<ip>
 
+## enable root login for ansible
+
+- `sudo vi /etc/ssh/sshd_config`
+- add a row with `PermitRootLogin yes`
+- `systemctl restart sshd`
+- make sure that the root password is properly set
+
 ## set LAMP stack
 
 <https://www.digitalocean.com/community/tutorials/how-to-install-linux-apache-mysql-php-lamp-stack-on-ubuntu-20-04-es>
