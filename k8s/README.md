@@ -735,9 +735,23 @@ you can confirm that it is working by checking that the **CoreDNS** Pod is Runni
 ```console
 sudo kubeadm reset
 sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=192.168.0.121
-kubectl cluster-info dump
-kubectl config view
+$ make sure these files exists under ROOT user directories
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+$
+sudo kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+$ if you get this error
+$$ dockmaster@k8smaster:~$ sudo kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+$$ The connection to the server localhost:8080 was refused - did you specify the right host or port?
+$$ dockmaster@k8smaster:~$
+$ this means that a user does not have the necessary files created and it's trying to communicate with default config rather with the .kube/config file info
 
+$ generate token command for new nodes
+kubeadm token create --print-join-command
+
+$ other useful commands
+kubectl cluster-info
 ```
 
 ### minikube
