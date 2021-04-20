@@ -756,4 +756,64 @@ kubectl cluster-info
 
 ### minikube
 
+## DXC
 
+1. Master Node
+   1. API server --> central element
+   2. Scheduler
+   3. Controller manager
+   4. etcd --> consistent HA key value store
+2. Worker node:
+   1. kubelet
+   2. container runtime interface
+   3. kube-proxy
+3. kubectl agent that runs on each wn
+
+Add-nons:
+
+- All k8s cluster must have cluster DNS - a DNS server.
+- container resource monitoring
+- web UI for monitoring as well
+- cluster-level logging
+
+What is workload? any app that runs on container. Workload resources:
+
+- Deployment: represents a set of multiple identical pods; not unique identities; multiple different replicas; facilitates replacing replicas
+
+![007](./assets/007.JPG)
+
+- replica set: ensures that a specified number of replicas is running
+
+![008](./assets/008.JPG)
+
+- statefulSet: set of pods with persistent identities as well as stable hostname
+
+![009](./assets/009.JPG)
+
+- daemonSet: ensures that nodes runs a copy of pod
+
+![010](./assets/010.JPG)
+
+- job and cronjob
+
+```console
+kubectl create deployment deploy1 --image=gcr.io/google-samples/hello-app:2.0
+kubectl get deployments
+kubectl delete deployments/deploy1
+kubectl expose deployment/deploy1 --type="ClusterIP" --port 80
+kubectl get services
+kubectl describe services/deploy1
+```
+
+<https://cloudacademy.com/course/kubernetes-patterns-for-application-developers/multi-container-patterns/>
+
+![011](./assets/011.JPG)
+
+![012](./assets/012.JPG)
+
+### kubernetes services
+
+1. clusterIP - 
+2. loadbalancer - exposes the service externally
+3. nodeport - exposes the service on each node ip
+4. externalName - 
