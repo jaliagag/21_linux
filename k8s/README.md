@@ -813,7 +813,38 @@ kubectl describe services/deploy1
 
 ### kubernetes services
 
-1. clusterIP - 
+1. clusterIP -
 2. loadbalancer - exposes the service externally
 3. nodeport - exposes the service on each node ip
-4. externalName - 
+4. externalName -
+
+### Container Runtime interface
+
+facilitate communication through **KUBELET**.
+
+![013](./assets/013.JPG)
+
+![014](./assets/014.JPG)
+
+### pod lifecycle and pod states
+
+| phase | description |
+| ----- | ------ |
+| pending  | initial phase |
+| running | at least one of the pod's containers is running |
+| succeeded | all the containers completed successfully |
+| failed | one of the pods' containers terminated unsuccessfully |
+| unknown | kubelet has stopped reporting communication with API server (network issues) |
+
+Pod condition
+
+| condition | description|
+| ----- |------ |
+| PostScheduled | indicates if the pod has been scheduled to a node or not |
+| Initialized | pods init containers have all completed successfully |
+| ContainersReady | All containers in the pod indicate that they are ready |
+| Ready | Pod is ready to provide services to its clients |
+
+![015](./assets/015.JPG)
+
+![016](./assets/016.JPG)
