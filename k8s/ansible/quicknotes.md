@@ -18,3 +18,15 @@ ansible_python_interpreter=/usr/bin/python3
 - test connection: `ansible all -m ping -u root`
 - adhoc commands: `ansible all -a "df -h" -u root`
 
+## Jeff Geerling
+
+`pip3 install ansible`
+
+inventory files be like:
+
+```txt
+[example]
+<ip>
+```
+
+`ansible -i inventory example -m ping -u centos`
