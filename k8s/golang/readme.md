@@ -46,3 +46,55 @@ if _, err := os.Stat(path); os.IsNotExist(err) {
 }
 // if the variable is not used in the program, it can cause an error
 ```
+
+### Data types
+
+- primitives
+  - integers - no decimals; platform dependent (the size of each depends on the architecture they were compiled for)
+    - unsigned integers - uint: 0 to infinite; sizes uint8 16 32 64; **byte - uint8**
+    - int: negative numbers; sizes int8 16 32 64; **rune = int32** --> used to represent unicode types
+    - uintpr
+    - floating points - decimal componentes - float
+    - complex number type - float + imaginary components
+    - booleans: either true or false; _bool_
+    - operators
+      - && and
+      - || or
+      - ! not
+    - string: sequence of bytes - never negative; strings are immutable
+- complex (arrays, maps)
+
+### Declaring variables
+
+```go
+package main
+
+import {
+    "fmt"
+}
+
+func main() {
+    msg := "holanda"
+    x := 1
+    fmg.Println(msg)
+    fmg.Println(x)
+}
+```
+
+constants
+
+```go
+package main
+
+import {
+    "fmt"
+    //"math"
+}
+
+func main() {
+    //fmg.Println(math.Pi)
+    const pi = 3.14
+    fmt.Println(pi)
+    fmt.Prinff("type: %T, value: %v") // prinf - gie format to the ouput
+}
+```
