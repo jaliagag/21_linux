@@ -497,5 +497,27 @@ roleRef:
   apiGroup: ""
 ```
 
+## managing HA clusters
 
+kubeadm: tool to creat clusters.
 
+- kubeadm init: bootstrap k8s control-plane node
+  - preflight: run preflight checks
+  - kubelet-start: write kubelet settings and restart kubelet
+  - certs: generate certificates for k8s cluster
+  - kubeconfig: generate all kubeconfig files for control plane and amdin kubeconfig file
+  - control-plane: generate all static Pod manifest files required to establish control plane
+  - etcd: generate static Pod manifest file for local etcd
+  - upload-config: uploads currently used config for kubeadm to ConfigMap
+  - mark-control-plane: mark nodes as control-plane
+  - bootstrap-token: manages kubeadm-specific bootstrap token function
+  - addon: installs addon for passing conformance tests
+- kubeadm join: bootstrap k8s worker node and join it to the cluster
+- kubeadm upgrade: upgrade k8s cluster to newer version
+- kubeadm config: configure cluster for kubeadm upgrade
+- kubeadm token: manage tokens to join workers
+- kubeadm reset: revert any host changes
+- kubeadm version: print kubeadm version
+- kubeadm alpha: preview set of features made available for gathering feedback
+
+![022](./assets/022.JPG)
