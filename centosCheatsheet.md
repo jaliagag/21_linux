@@ -43,7 +43,6 @@ DNS4=8.8.8.8
 
 ## lvm
 
-
 - view disk info:
   - `lsblk`
   - `parted` > `print free` OR `parted /dev/sda unit TB print free`
@@ -99,6 +98,8 @@ lvm -- abstraction layer between OS and storage; it doesn't matter underlying ha
 
 ### creating a pvs
 
+<https://serverfault.com/questions/457831/how-to-change-a-physical-partition-system-to-lvm>
+
 ```console
 parted
     mkpart primary <ext2, 3, 4, xfs...> <size - 102GB 120GB>
@@ -140,7 +141,7 @@ sudo ufw app list
 sudo ufw allow in "Apache"
 sudo ufw status
 sudo ufw enable
-curl <IP SERVER ADDRESS>
+curl `<IP SERVER ADDRESS>`
 
 ### MYSQL
 
