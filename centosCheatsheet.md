@@ -43,10 +43,18 @@ DNS4=8.8.8.8
 
 ## lvm
 
+<https://www.tecmint.com/extend-and-reduce-lvms-in-linux/> 
+
+steps:
+
+1. create a partition (using `fdisk -cu /dev/sdxxx` or `parted`)
+2. create a physical volume using the new partition
+3. 
 
 - view disk info:
   - `lsblk`
   - `parted` > `print free` OR `parted /dev/sda unit TB print free`
+  - we can also use `fdisk -l /dev/sda`
 
 ```console
 [root@#localhost ~]# lsblk
