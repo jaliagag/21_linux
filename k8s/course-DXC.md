@@ -520,4 +520,9 @@ kubeadm: tool to creat clusters.
 - kubeadm version: print kubeadm version
 - kubeadm alpha: preview set of features made available for gathering feedback
 
+1. Single master config - k8s cluster has 1 master and multiple workers; wn connect and communicate with master API server. if master is not available, SPOF <-- not HA
 ![022](./assets/022.JPG)
+2. mult-master config - wn can connect to any master k8s api server user HA load balancer
+![023](./assets/023.JPG)
+
+Masters try to acquire "_lease_".
