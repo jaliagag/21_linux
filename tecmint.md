@@ -13,6 +13,12 @@
 - **netstat**: network interface statistics; it can display the routing table, ports that various services are listening on, TCP and UDP connections, PID, and UID `netstat -i`; check routing table `netstat -r`; active TCP connections `netstat -ant`
 - **ss**: dump socket statistics and shows internet metrics similar to netstat command. `ss` list all connections; `ss -l` display listening sockets; `ss -t` display all TCP connection
 
+extras
+
+- **nmap**: check if connection is open `nmap -sT -P0 -p <port> <ip>`
+- **route add -host `<ip>` gw `<gw>`**
+- **ip route add `<ip>` via `<gw>`**
+
 ## troubleshooting networks
 
 <https://www.tecmint.com/basic-network-troubleshooting-tips/>
@@ -30,7 +36,10 @@
 2. create physical volume (pvcreate)
 3. create volume group (vgreate)
 4. create logical volume (lvcreate)
-5. format logical volume (mkfs.`<format>`)
+5. format logical volume - create fs(mkfs.`<format>` or xfs_grow)
 6. mount the system
+7. if mounted, _lvexted -L +#G `<vgGroup>`_
 
 <https://www.tecmint.com/create-lvm-storage-in-linux/>
+
+<https://www.linuxtechi.com/extend-lvm-partitions/>

@@ -409,7 +409,7 @@ roles para declarar permisos que afectan a namespaces
 
 cluster role - permiso para todo el cluster
 
-para poder asignar los permisos a usuarios o grupos tenemos que hacer un role binding - 
+para poder asignar los permisos a usuarios o grupos tenemos que hacer un role binding -
 junta un usuario/grupo con un rol; lo mismo si queremos dar permiso a todo un cluster
 tenemos que hacer un cluster role binding. elementos de role binding
 
@@ -423,10 +423,10 @@ los roles permiten cosas - por defecto se niega todo
 
 ```console
 kubectl create namespace office
-openssl genrsa -out employee.key 2048		<-- creamos una key
-openssl req -new -key employee.key -out employee.csr -subj "/CN=employee/O=bitnami" 	<-- creamos certificate signing request
-openssl x509 -req -in employee.csr -CA ~/.minikube/ca.crt -CAkey ~/.minikube/ca.key -CAcreateserial -out employee.crt	< -- firmar el CSR
-kubectl config set-credentials employee --client-certificate=employee.crt --client-key=employee.key	<-- crear usuario
+openssl genrsa -out employee.key 2048 <-- creamos una key
+openssl req -new -key employee.key -out employee.csr -subj "/CN=employee/O=bitnami" <-- creamos certificate signing request
+openssl x509 -req -in employee.csr -CA ~/.minikube/ca.crt -CAkey ~/.minikube/ca.key -CAcreateserial -out employee.crt < -- firmar el CSR
+kubectl config set-credentials employee --client-certificate=employee.crt --client-key=employee.key <-- crear usuario
 kubectl config set-context employee-context --cluster=minikube --namespace=office --user=employee <-- crear contexto
 kubeselect <-- selecionar contexto que acabamos de crear
 ```
