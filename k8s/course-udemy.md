@@ -253,7 +253,7 @@ containers can communicate with each other using localhost (loopback nic), same 
 
 how to deply pods: `kubectl run nginx --image nginx`. it creates a pod and deploys an image of the nginx docker image. it gets the image from the dockerhub repository. it can also be configured to pull images from a local repository.
 
-`kubectl get pods` -- see pods and status
+`kubectl get pods` -- see pods and status - `kubectl describe pod <podname>`
 
 ### pods with yaml
 
@@ -263,3 +263,248 @@ k8s uses yaml files as inputs for the creation of k8s objects. required structur
 - kind <-- type of object we are trying to create - Pod, Service, ReplicaSet, Deployment
 - metadata <-- data about the object, it's *name*, *labels*, etc... form of dictionary
 - spec <-- additional info about the object we are creating.
+
+Once the file is done `kubectl create -f <file>`
+
+```yml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp-pod
+  labels:
+    app: myapp
+spec:
+  containers:
+    - name: nginx-container
+      image: nginx
+    # - name: backend-container
+    #   image: redis
+```
+
+### replica sets
+
+controllers: the processes that monitor k8s objects and respond accordingly. **Replicatoin Controller**. it helps to run multiple instance of a single pod in the k8s cluster, thus providing HA. even if you have a single pod the replication controller can help by automatically bringing up a new pod when the existing pod fails. the replication controller ensures that the specified number of pod are running at all times.
+
+RC is also used to share the load between containers - RC can create pods on other nodes as well. The replication controller is older technology, being replaced by **replica sets**. replica sets is the new recommended way of setting up replication.
+
+creating a replication controller:
+
+```yml
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: myapp-rc
+  labels:
+    app: myapp
+    type: front-end
+spec:
+  template:
+    metadata:
+      name: myapp-pod
+      labels:
+        app: myapp
+    spec:
+      containers:
+        - name: nginx-container
+          image: nginx
+  replicas: 3
+```
+
+- `kubectl create -f <file>`
+- `kubectl get replicationcontroller`
+
+what is a replica? a copy of a pod
+
+```yml
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: myapp-replicaset
+  labels:
+    app: myapp
+    type: front-end
+spec:
+  template:
+    metadata:
+      name: myapp-pod
+      labels:
+        app: myapp
+    spec:
+      containers:
+        - name: nginx-container
+          image: nginx
+  replicas: 3
+  selector:
+    matchLabels:
+      type: front-end
+```
+
+mayor difference with replication controller is the "selector" field: it identifies what pods fall under it. RS can also manage pods that were not created as part of the rs creation (pods created before applying the replica set). replica sets can be used to monitor existing pods.
+
+- `kubect get replicaset`
+
+Labels and selectors
+
+The role of the replica set is to monitor the pod and in case any on them were to fail, deploy new ones. the rs is a process that monitors the pod. the replica set knows which pod to monitor through the labels attached to pods, defined under the selector field.
+
+to escale the number of replicas, we can simply update the rs config file `kubectl replace -f <file>`; to do this task manually, we can run `kubectl scale --replicas=6 <file>` or `kubectl scale --replicas=6 <type> <rsName>`<-- this does not update the rs definition file.
+
+We can also use `kubectl edit <replicasetName>`, update the configuration there and then delte de pods; as they are being deleted and recreated, they will pick up the new configuration.
+
+### deployments
+
+deployments are useful for
+
+- deploying/creating new instances of an application
+- updating an application (rolling updates)
+- rolling back an update
+- multiple changes to the environment (updating and creating new instances) - apply changes after a pause, then continue
+
+deployments are k8s objects that are higher than replicasets. it allows for seamless update of the app.
+
+creating a deployment through a definition file (similar to replica set):
+
+```yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp-deployment
+  labels:
+    app: myapp
+    type: front-end
+spec:
+  template:
+    metadata:
+      name: myapp-pod
+      labels:
+        app: myapp
+        type: front-end
+    spec:
+      containers:
+        - name: nginx-container
+          image: nginx
+  replicas: 3
+  selector:
+    matchLabels:
+      type: front-end
+```
+
+`kubectl create -f <deploymentFile>` <<-- the deployment creates a replica set (get deployments = 1, get replicasets = 1) which create pods.
+
+`kubectl get all`
+
+<https://linuxhandbook.com/kubectl-apply-vs-create/>
+
+### creating yml files on the run
+
+using `kubectl run` command can help in generating a yaml template. if your were asked to create a pod or deployment with specific name and image you can simply run the `kubectl run` command.
+
+<https://kubernetes.io/docs/reference/kubectl/conventions/>
+
+- creating an nginx pod: `kubectl run nginx --image=nginx`
+- generate POD manifes yaml file (`-o yaml`) - don't create it (`--dry-run`): `kubectl run nginx --image=nginx --dry-run=client -o yaml`
+- create a deployment: `kubectl create deployment --image=nginx nginx`
+- generate deployment yaml file (`-o yaml`). don't create it (`--dry-run`): `kubectl create deployment --image=nginx nginx --dry-run=client -o yaml`
+- generate deployment yaml file (`-o yaml`). don't create it (`--dry-run`) with 4 Replicas (`--replicas=4`): `kubectl create deployment --image=nginx nginx --dry-run=client --replicas=4 -o yaml > nginx-deployment.yaml`
+
+we can create a new file and make necessary changes to it.
+
+```console
+root@controlplane:~# kubectl create deployment --image=httpd:2.4-alpine httpd-frontend --dry-run=client --replicas=3 -o yaml > own-file.yaml
+root@controlplane:~# 
+root@controlplane:~# 
+root@controlplane:~# 
+root@controlplane:~# 
+root@controlplane:~# cat own-file.yaml 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: httpd-frontend
+  name: httpd-frontend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: httpd-frontend
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: httpd-frontend
+    spec:
+      containers:
+      - image: httpd:2.4-alpine
+        name: httpd
+        resources: {}
+status: {}
+root@controlplane:~# kubectl create deployment --image=httpd:2.4-alpine httpd-frontend ^Creplicas=3 -o yaml > own-file.yaml
+root@controlplane:~# kubectl get deployments
+NAME                  READY   UP-TO-DATE   AVAILABLE   AGE
+deployment-1          0/2     2            0           5m26s
+frontend-deployment   0/4     4            0           17m
+root@controlplane:~# kubectl create deployment --image=httpd:2.4-alpine httpd-frontend --replicas=3 -o yaml > own-file-r.yaml
+root@controlplane:~# kubectl get deployments
+NAME                  READY   UP-TO-DATE   AVAILABLE   AGE
+deployment-1          0/2     2            0           5m52s
+frontend-deployment   0/4     4            0           17m
+httpd-frontend        0/3     3            0           4s
+root@controlplane:~#
+```
+
+### namespaces
+
+_default_ is the namespace that creates k8s. k8s creates a set of pods for internal purposes (networking solution, dns...) to isolate them from the user on another namespace named _kube-system_. a third namespace is created called _kube-public_; this is where resources that should be made available to all users are created.
+
+resources on namespaces are isolated.
+
+namespaces can have different sets of policies assigned, to define who can do what. you can also assign quotas/limits of resources to the namespaces.
+
+resources within a namespace can refer to each other simply by their names (`mysql.connect("db-service"`). a pod can reach a resource on another namespace - we must append the name of the namespace to the name of the service (`mysql.connect("db-service.dev.svc.cluster.local")` <<<--- connecting from, say, default ns to dev ns). we can access the resources because a DNS entry is created when the service is created.
+
+| db-service | dev | svc | cluster.local |
+| ---------- | ---- |---- |--------- |
+| service name | namespace | service | domain |
+
+- to list pods on another ns: `kubectl get pods --namespace=<nsName>`
+- create a pod on another ns: `kubectl create -f <file> --namespace=<nsName>` we can move this option directly to the pod definition file; under **metadata**, `namespace: dev` as a sibling of **name**. this ensures that resources are created on the same ns consistently.
+
+creating a ns definition file
+
+```yml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev
+```
+
+`kubectl create -f <fileName>`
+
+Another way of creating a ns is by running `kubectl create namespace <nsName>`
+
+to switch to another namespace: `kubectl config set-context $(kubectl config current-context) --namespace=dev`
+
+to view pods on all ns: `kubectl get pods --all-namespaces`
+
+contexts are used to manage multiple clusters and environments from the same management system.
+
+to limit resources in a ns, create a _resource quota_
+
+```yml
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-quota
+  namespace: dev
+spec:
+  hard:
+    pods: "10"
+    requests.cpu: "4"
+    requests.memory: 5Gi
+    limits.cpu: "10"
+    limits.memory: 10Gi
+```
+
+`kubectl create -f <file>`
