@@ -508,3 +508,85 @@ spec:
 ```
 
 `kubectl create -f <file>`
+
+- `kubectl get ns`
+- `kubectl -n research get pods` --> `-n` for namespace name
+
+### services
+
+services enable communication between components and outside the app. they help us connect apps with other apps/users.
+
+![026](./assets/026.JPG)
+
+services are k8s objects with many uses. one of then is to listen to a port on the node and forward requests on that port to a port on the pod running the web app.
+
+![027](./assets/027.JPG)
+
+we can't reach the web page on the POD, which has a private IP 10.244.0.2; we can create a service on the node that listens to requests on port XXX; once the node reciebes a request on a certain port, the service will "translate" the address and reach the pod.
+
+this is known as a **node-port** service - the service listens to a port on the node and forwards requests to the POD.
+
+1. node-port: the service makes an internal port accesible on a port on the node
+2. clusterIP: the service creates a virtual IP inside the cluster to enable communication between services, for instance, front end and back-end servers
+3. load balancer: it creates a loand balancer for our app in supported cloud providers.
+
+#### NodePort
+
+in node port there are 3 ports involved:
+
+1. the port on the POD where the web-server is running (port 80) <-- it is referred to as the **target port**
+2. port on the service itself - it is simply referred to as the port; this naming convention takes the POV of the _service_. the service has its own ip, known as the **clusterIP** of the service.
+3. the port on the node, which we use to reach it externally - known as the **NodePort**. by default port range for NodePort is between 30000 and 32767
+
+creating a service:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-service
+spec:
+  type: NodePort # could be ClusterIP or LoadBalancer
+  ports:
+  - targetPort: 80
+    port: 80 # MANDATORY
+    nodePort: 30008
+  selector: # we use labels used to create the pod
+    app: myapp      # these two fields are pulled from the POD def file, metadata > labels
+    type: front-end # having app and type creates the link between the service and the POD
+```
+
+![028](./assets/028.JPG)
+
+nodeport has a builtin _random_ algorythm to distribute load in case there are multiple PODs; it also has SessionAffinity.
+
+what happens when the app is distributed across _nodes_: k8s creates a service that spans across all the nodes in the cluster and maps the target port to the same nodeport on all the nodes of the cluster. this way allows you to access the application from any node in the cluster using the same port number.
+
+![029](./assets/029.JPG)
+
+#### ClusterIP
+
+we can't rely on POD IP's to ensure communication between apps, since they are constantly being created.
+
+clusterIP is a k8s service that allows us to group IPs together on a single interface. each ip gets an ip and name assigned to it inside the cluster and that's the information that should be used by other pod to access the service.
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: back-end
+spec:
+  type: ClusterIP # default service
+  ports:
+    - targetPort: 80  # where the backend is exposed
+      port: 80  # where the service is exposed
+  # to link the service to a set of ports we use selector
+  # copy the label from pod def file
+  selector:
+    app: myapp
+    type: back-end
+```
+
+#### LoadBalancer
+
+
