@@ -41,6 +41,13 @@ DNS4=8.8.8.8
 
 `sudo systemctl restart network`
 
+## configure ssh key
+
+- ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+- eval "$(ssh-agent -s)"
+- ssh-add ~/.ssh/id_rsa
+- ssh-copy-id username@ip
+
 ## lvm
 
 <https://www.tecmint.com/extend-and-reduce-lvms-in-linux/> 

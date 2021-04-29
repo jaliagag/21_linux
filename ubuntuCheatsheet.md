@@ -37,6 +37,13 @@ ethernets:
 sudo netplan apply
 if errors: sudo netplan --debug apply
 
+## configure ssh key
+
+- ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+- eval "$(ssh-agent -s)"
+- ssh-add ~/.ssh/id_rsa
+- ssh-copy-id username@ip
+
 ## add new root capable user
 
 sudo adduser dockmaster
@@ -46,7 +53,7 @@ sudo usermod -aG sudo dockmaster
 ## create and associate sshkey
 
 ssh-keygen -t rsa
-ssh-copy-id dockmaster@<ip>
+ssh-copy-id dockmaster@`<ip>`
 
 ## enable root login for ansible
 
@@ -66,7 +73,7 @@ sudo ufw app list
 sudo ufw allow in "Apache"
 sudo ufw status
 sudo ufw enable
-curl <IP SERVER ADDRESS>
+curl `<IP SERVER ADDRESS>`
 
 ### MYSQL
 
