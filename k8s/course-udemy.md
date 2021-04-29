@@ -625,3 +625,26 @@ within the imperative approach, there are two "ways":
 1. running imperative commands to create or create objects - quick, no need to write yaml file. limited functionality, long commands
 2. creating objects with definition or manifest files
 
+best practice: update the configuration file, then `kubectl replace -f <modifiedConfigFile>` <<<---- this is imperative applies.
+
+insted of using the `kubectl replace`, we use `kubectl apply` command - this commands knows NOT to create an object if it already exists (with _replace_ if the object already exists, we will get an error). we can also input an entire directory so that all definition files on the directory are created.
+
+when we want to make a change, we use `kubectl apply -f <filename>` and it knows that there is already a process with that information, but it looks for any changes to what is actually running and it _updates the object_.
+
+- `--dry-run`: as soon as the command is run, the resource will be creted
+- `--dry-run=client`: if you simply want to test your command - this will not crete the resource, instead, it will etll you whether the resource can be created and if your command is right.
+- `-o yaml`: tils will output the resource definition in yaml format on the screen
+
+- creating a pod: `kubectl run nginx --image=nginx`
+- creating a pod definition file (but not actually doing it): `kubectl run nginx --image=nginx --dry-run=client -o yaml`
+- creating a deployment: `kubectl create deployment --image=nginx nginx`
+- creating a deployment definition file: `kubectl create deployment --image=nginx nginx --dry-run=client -o yaml`
+- create deployment with 4 replicas: `kubectl create deployment nginx --image=nginx --replicas=4` - to scale the deployment: `kubectl scale deployment <depnam> --replicas=3`
+- save the yaml def file to a file: `kubectl create deployment --image=nginx nginx --dry-run=client -o yaml > nginx-deployment.yaml`
+- creating a service: `kubectl expose pod redis --port=6379 --name redis-service --dry-run=client -o yaml` <<<--- this will automtically use the pod's labels as selectors. another way of doing this is `kubectl create service clusterip redis --tcp=6379:6379 --dry-run=client -o yaml` (this will not use the pods labels s selectors, instead, it will assume selectors as **app=redis**)
+- `kubectl run custom-nginx --image=nginx --port=8080`
+- `ubectl create deployment redis-deploy --namespace=dev-ns --image=redis --replicas=2`
+- `kubectl run httpd --image=httpd:alpine --port=80 --expose`
+
+- <https://github.com/kubernetes/kubernetes/issues/46191>
+- <https://kubernetes.io/docs/reference/kubectl/conventions/>
