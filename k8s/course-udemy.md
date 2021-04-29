@@ -589,4 +589,39 @@ spec:
 
 #### LoadBalancer
 
+cloud providers have native custom load balancers
+
+```yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-service
+spec:
+  type: LoadBalancer # default service
+  ports:
+    - targetPort: 80
+      port: 80
+      nodePort: 30008
+```
+
+### imperative vs declarative
+
+in IaC there are two main approaches, imperative and declarative.
+
+- imperative: specifying what and how to do it. set of instruction, step by step. checks need to be done manually.
+  - `kubectl run --image=nginx nginx`
+  - `kubectl create deployment --image=nginx nginx`
+  - `kubectl expose deployment nginx --port 80`
+  - `kubectl edit deployment nginx`
+  - `kubectl scale deployment nginx --replicas=5`
+  - `kubectl set image deployment nginx nginx=nginx:1.18`
+  - `kubectl create -f <file>`
+  - `kubectl replace -f <file>`
+  - `kubectl delete -f <file>`
+- declarative: you specify the final state; what to do. we state what we need. checks are done by the tool. updating only the config file. the declarative approach involves creating a set of files indicating the _expected state of app/services_ on the k8s cluster and a simple `kubectl apply -f <file>`, k8s should be able to determine how to reach the indicated state. kubectl apply for creating, managing and updating. this command will look at the existing configuration and figure out what changes need to be made to the system.
+
+within the imperative approach, there are two "ways":
+
+1. running imperative commands to create or create objects - quick, no need to write yaml file. limited functionality, long commands
+2. creating objects with definition or manifest files
 
