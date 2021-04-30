@@ -648,3 +648,32 @@ when we want to make a change, we use `kubectl apply -f <filename>` and it knows
 
 - <https://github.com/kubernetes/kubernetes/issues/46191>
 - <https://kubernetes.io/docs/reference/kubectl/conventions/>
+
+```console
+kubectl run redis --image=redis:alpine --labels="tier=db"
+kubectl create svc clusterip redis-service --tcp=6379   
+kubectl create deploy webapp --image=kodekloud/webapp-color --replicas=3
+kubectl run custom-nginx --image=nginx --port=8080
+kubectl create ns dev-ns
+kubectl create deploy redis-deploy --namespace=dev-ns --image=redis --replicas=2
+kubectl run httpd --image=httpd:alpine --port=80 --expose
+```
+
+### kubectl apply
+
+it's used to work on a declarative way; this command takes into account the **local configuration file**, **the live object definition file on k8s** and **the last applied configuration**.
+
+if the object does not already exists, the object is created. when the object is created, an object, similar to the definition file we created locally, is created locally, but with additional fields to store the status of the object. this is the live configuration of the object in the cluster.
+
+when we we create an object with kubectl apply, the local configuration file is converted into a json format and it is then stored as the last applied configuration - going forward, the three files are compared to identify what changes are to be made to the live object.
+
+1. local file updated
+2. `kubectl apply -f <file modified>`
+3. the new values are compared to the live configuration file; if there is a difference, the live version is updated with the new value
+4. json last applied configuration is updated
+
+the last applied configuration file is used to "figure out" what fields are/were removed from the local file, the history of the file configuration.
+
+- <https://kubernetes.io/docs/tasks/manage-kubernetes-objects/declarative-config/>
+
+the last applied configuration information is stored within the live object configuration file as an annotation named _last-applied-configuration_. kubectl create or replace do not store the last applied configuration.
