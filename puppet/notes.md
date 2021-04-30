@@ -189,3 +189,79 @@ class jaliagastack {
 
 }
 ```
+
+creating and running a class - stored under `/etc/puppet/modules/<moduleName>/manifests` we need to put those classes (which are init.pp files) in the main manifests, so when the puppet agent connects the master can apply those configurations. /etc/puppet/manifests/site.pp -->> this file inclues the names of the classes that will be applied (it will look under the modules dir for those classes):
+
+```rb
+node default { }
+
+node 'linuxagent.example.com' {
+    include lampserver # <-- class/module name
+}
+
+node 'windowsagent.example.com' {
+    include iisserver
+}
+```
+
+go to the linux puppet agent: `sudo puppet agent --test` goes to the master who will determine what class to apply
+
+parameters in classes
+
+- no parameters:
+
+![005](./assets/p005.png)
+
+- with parameters:
+
+![006](./assets/p006.png)
+
+class inheritance - create a class, create a subclass
+
+![007](./assets/p007.png)
+
+line 17 and 18 overwrites the file resource and source attribute on lines 3 and 4
+
+![008](./assets/p008.png)
+
+puppet resources are objects or actions that puppet uses to configure something. resource definition and attributes
+
+![009](./assets/p009.png)
+
+- line 18 --> packet resource, what should be installed
+- line 24 --> server resource
+- file 35 --> file resources
+
+![010](./assets/p010.png)
+
+`puppet resource user ubuntu`; `puppet resource package puppet`; `puppet resource --help`
+
+using resource - puppet code `/etc/puppet/manifests` files.pp. 
+
+![011](./assets/p011.png)
+
+resources to be applied on the agent node
+
+some attributes for popular resources - value pair
+
+- ensure
+- require
+- installsubfeataures
+- installmanagementtools
+- content (file resource)
+
+certain attributes are set based on the resource type
+
+creating a custom resource type:
+
+![012](./assets/p012.png)
+
+**types** are used to set the desired state of the system (what state should services should be). set like core types.
+
+1. `sudo puppet module generate <moduleName>`
+2. code a manifest
+
+![013](./assets/p013.png)
+
+3. lines 12-14 --> these would have to be specified on Hiera .yaml file (on any of the levels)
+4. on the agent: `sudo puppet agent --test` puppet agent will receive the catalog from the master so the agent can apply the configuration

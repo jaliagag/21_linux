@@ -677,3 +677,26 @@ the last applied configuration file is used to "figure out" what fields are/were
 - <https://kubernetes.io/docs/tasks/manage-kubernetes-objects/declarative-config/>
 
 the last applied configuration information is stored within the live object configuration file as an annotation named _last-applied-configuration_. kubectl create or replace do not store the last applied configuration.
+
+## Scheduling
+
+manual scheduling. ervery pod has a field called **nodeName** that by default it is not set. the scheduler goes over all the pods and looks for those that do not have this property set. those are the candidates for scheduling.
+
+it then identifies the right node for the pod and sets the value of the property/field **nodeName** to be the corresponding node by creating a binding object.
+
+if there is no scheduler, the pods remain in a status pending. we can manually assign pods to nodes. we can simply hardcode the field nodeName on the pod def file. we can only specify the node name when the pod is being created. k8s won't allow you to modify the nodeName property of a pod.
+
+we can create a binding object and send a post request to the pods binding API
+
+```yaml
+apiVersion: v1
+kind: Binding
+metadata:
+  name: nginx
+target:
+  apiVersion: v1
+  kind: Node
+  name: node02 # name of the node
+```
+
+then send a post request to the pod's binding API with the data set to the binding object in JSON format: `curl --header "Content-Type:application/json" --request POST --data '{"apiVersion":"v1", "kind": "Binding" } http://$SERVER/api/v1/namespaces/default/pods/$PODNAME/binding/'`
