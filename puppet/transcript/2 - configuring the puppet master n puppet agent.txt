@@ -1,0 +1,629 @@
+
+Configuring the Puppet Master & Puppet Agent
+
+Most of the functionality of Puppet is contained in the Puppet master and the Puppet agent. Discover how to configure Puppet for automated server configuration.
+
+Table of Contents
+
+    Hiera Overview
+    Installing and Configuring Hiera
+    The Three Layers of Hiera
+    Creating a Puppet Test Class
+    Coding a Puppet Module
+    Creating and Running a Puppet Class
+    Implementing Parameterized Classes
+    Implementing Class Inheritance
+    Resource Types
+    Using Resources (Code)
+    Resource Attributes and Types
+    Working with Custom Resource Types
+    Resource Abstraction Layer
+    Exercise: Design a Puppet Solution
+
+Hiera Overview
+
+[Topic title: Hiera Overview. The presenter is Bob Hendry.] Hiera – what Hiera is is configuration software from Puppet Labs. [What is Hiera?] Now it runs with Puppet. And it's kind of like a utility with Puppet but not really. It's almost like its own core component. As a matter of fact, with the new version of Puppet, it shifts as a core component. Now what Hiera does is it allows us, the developer, to separate configuration code from functionality. So when we write manifest, which is what we write Puppet code in, what we do is we could put different properties in and put values for those properties. Now those are basically hard coded. Now what Hiera allows us to do is it allows us to separate that. Kind of like to take the value and the pair away from the actual configuration setting. And then kind of putting them together dynamically so that way, we can reuse some of this configuration.
+
+Now Hiera has been around a while. It was introduced back in 2011 and was really a simple plugin. But it's evolved so much from that. It started out to be a real simple plugin and got more and more complicated. And in the most current version of Puppet, it's integrated now as a core component. Now as a core component, it ships with Puppet Enterprise. And it also can be used with open source Puppet, albeit with a little bit more effort and a little bit more configuration steps to use it in open Puppet than to use it in Puppet Enterprise. [Puppet Without Hiera]
+
+Now you don't have to use Hiera so if you use Puppet without Hiera, it basically works like this simple diagram here. You have a Puppet master and then you have Puppet agents. In this diagram, we just have one Puppet agent just for the sake of simplicity. So what happens is every now and then, the Puppet agent will go to the master and ask for what the configuration settings should be. So basically what the master does is it will download, for the lack of a better term, a configuration catalog to the agent where the agent will look at this configuration catalog and configure itself accordingly.
+
+Now basically what happens here is we have a two-way street. The agent communicates facts about itself. The facts are basically environment variables or global variables. Things such as, you know, the FQDN, the IP address and there are dozens of facts that the agent will communicate with the master. And based on those facts, the master will download or ship or push the configuration catalog to the agent. And then the agent will apply the configuration. Now all this works just fine without Hiera so you don't have to use it if you don't want to. [Puppet With Hiera]
+
+Now this is what Puppet looks like with Hiera. Now notice it doesn't really change. Hiera doesn't really change the process, it just kind of adds to it. You still have the agent and the agent will go to the master, push up its facts. The master will look at the facts, determine who the agent is by the facts. And then push down the configuration or the catalog to the agent where the agent will then apply the catalog and basically configure itself. The one thing that's different here is Hiera has all of the value pair configuration in a database. Now it's not really a database but it could be. In most cases, the configuration is going to be stored in a YAML file or a JSON file as a value pair.
+
+So the agent doesn't really know anything about this and really doesn't care. So basically the master at this point with Hiera will get that value pair. And put it in the placeholder in the manifest, the class, or the module, wherever you're doing the configuration. And push that value down to the agent where the agent just as usual will apply that configuration. And set its own configuration based on the catalog that's pushed down from the master. [Three Layers of Hiera]
+
+Now Hiera has evolved so much over the years. In previous versions of Hiera, the agent would go to the master. The master would go to Hiera to get the value pair and the values, will take those values and put them in the placeholders in the manifest, the class, or the module. And then push to catalog down to the agent where the agent will perform the configuration.
+
+Now in the most current version of Hiera, we have three different layers now. That whole process still works but we have a global layer which is going to be applied to a configuration for everybody. An environment layer such as production, QA, test, or development. We're going to have the configuration pushed to that environment. And also under all that we have the module layer which is the most smallest layer. It's not global, it's not environmental, it's only applied to the module so it gives us many more options now to do our configuration. [Pros and Cons of Hiera]
+
+So what are the pros and the cons of using Hiera? Well, a lot of this is subjective so I'll let you make up your own mind. So these are the ones I came up with. There are a lot of pros. First of all, you have the separation between the data and the code. Now that should go without saying because now what you can do is rather than hard code your configurations in a manifest, a class, or a module, what you can do now is you could put it in some sort of persistent storage.
+
+I'm not going to say a database because it's not always a database. In most cases, it's a YAML or a JSON file. Also, it's kind of hidden exactly where this stuff is. Not that you can't get to it but it's kind of pushed out of the way where it's not getting in the way of any other stuff that you're doing in Puppet. Now it integrates well, at least recently with some more full featured back-end datastores. So you're not stuck necessarily using flat files. And we can put in conditional logic. Meaning if it's this agent, do something. If it's the other agent, do something else.
+
+Now the cons – It can be confusing, especially with the three layers in the most current version. You have to really think about what you want to apply to each layer. And also YAML is not the most easiest thing to work with. If your configuration in YAML is wrong, Hiera is not going to work. And also, it's hard or almost impossible to debug this. If Hiera is not working, you almost have to take it step by step to determine exactly where the problem is.
+Installing and Configuring Hiera
+
+[Topic title: Installing and Configuring Hiera. The presenter is Bob Hendry.] Here let's talk about how you install Hiera. How we configure Hiera and kind of a case on why you should use it. Now let's talk about installation and configuration. Now this is going to really be determined on the version of Puppet that you're using. If you're using the most current version of Puppet, you already install it when you install Puppet. [He switches to the command prompt window.] So if you have Puppet master and Puppet agent or Puppet Enterprise, the whole Puppet stack, you already have Hiera. [He runs the hiera --version command.] Now, if you have a previous version, you are going to have to install it as a plugin but at the time of this video, most of you should already have it as Puppet Enterprise. So you already have it installed. Now just to make sure, what you can do is you can issue the command that you just saw hiera --version. And this will give you the version of Hiera that you're currently running. Now it basically comes preconfigured for you. All you need to do is really, just apply the Hiera settings. And you don't have to use it. [He runs the ls -l command.] So it's not something that you really need to configure but you should if you're going to use it.
+
+So let's make a case for using Hiera. And let me kind of show you what it's used for. What I'm doing here is I'm going to open up our main manifest. So I navigated to /etc/puppet/manifests$ and I'm going to use nano as my text editor. So sudo nano site.pp. Let's take a look at this manifest. And let me make a ploy and a case for Hiera here. Basically when you look at a manifest, you see the following. [He switches to the Notepad++ window. It contains the 136770.txt tabbed file. The complete code is given in the transcript for reference under the heading, "Code1".] Basically just a bunch of Puppet code. For example, we're going to, you know, execute a program. We're going to have a command. We're going to install a package. We're going to require that something runs before we install that package. We're going to ensure that it's installed, that it's running. And we have on line 17, we're installing mysql-server. But take a look at how we wrote this manifest. Everything is hard coded. We have, you know, for example, the packages that we're installing require equals something ensure equals something. Everything is hard coded in this manifest. And everyone gets it. You know, we don't have any sort of code here that it's at the global level or at the environment level or at the module level.
+
+It's kind of everything is everywhere. What Hiera does is it allows us to get away from that. What we can do is we can take these values and split them into value pairs. So basically take our configuration and the values for our configuration and split them. Basically just like when we take our content and our presentation and we put them in different spots. That's what we are going to be doing with Hiera within Puppet. What we can do is we can take our configuration and the value for that configuration. And split them off. And make them more modular. So that's really the genesis for Hiera. And why you want to use it? And also that's a reason why you don't have to. If you're happy with the way things are running now, you can keep it exactly the way it is. So in this video, you learned about the installation of Hiera, the configuration of Hiera, and reasons why you want to use it.
+
+
+Code1:
+# execute 'apt-get update'
+exec { 'apt-update':
+command => '/usr/bin/apt-get update'
+}
+# install apache2 package
+package { 'apache2':
+require => Exec['apt-update'],
+ensure => installed,
+}
+# ensure apache2 service is running
+service { 'apache2':
+ensure => running,
+}
+# install mysql-server package
+package { 'mysql-server':
+require => Exec['apt-update'],
+ensure => installed,
+}
+# ensure mysql service is running
+service { 'mysql':
+ensure => running,
+}
+# install php5 package
+package { 'php5':
+require => Exec['apt-update'],
+ensure => installed,
+}
+# ensure info.php file exists
+file { '/var/www/html/info.php':
+ensure => file,
+content => '<?php phpinfo(); ?>',
+require => Package['apache2'],
+}
+The Three Layers of Hiera
+
+[Topic title: The Three Layers of Hiera. The presenter is Bob Hendry.] I'm going to talk about Hiera and specifically the three layers of configuration for Hiera. [The command prompt and Notepad++ windows are open. The Notepad++ window contains the 136771.txt tabbed file. The complete code is given in the transcript for reference under the heading, "Code2".] Now in previous versions of Hiera and Hiera versions 3.0 and before, what was used was a single global Hiera YAML file or hiera.yaml. Now the single file was used to configure the entire hierarchy. There was no different configuration, you know, based on environment or module. So basically, what was used was a one size fits all sort of configuration. Now in the current version of Hiera, our version 0.5, there are three different layers of configuration. We have global, environment, and module. Now each layer of configuration has its own hierarchy. And they're all concatenated into one super hierarchy before the actual look up is done. So basically what happens is the following, Hiera searches for every data source in the global layer hierarchy before checking any other source such as environment or the module layer. So why are there three layers now?
+
+Now basically before version 3.0 or 3.0 and before, since we only used one global hiera.yaml file, there were at least two pretty big problems. The first problem is every environment that we would want to configure had to use the same hierarchy. Now most developers keep configuration data in their environment or in their environment hierarchy. But that didn't exist in Hiera 3.0 and before. Since the hierarchy was global, the developer couldn't make any changes to the actual configuration without it changing every environment at the same time. Now since environments are often used for stage rollout, such as, you know, development and QA, UAT and different environments exist. The hierarchy was really a dangerous exception here because everything was global. So, if we wanted to roll something out to a specific environment and it was only specific to that environment that really was not possible until now.
+
+Now second of all, any kind of module data was also very hard to do if not impossible. Now most modules have some kind of default data. And developers would use Hiera to try to provide this default data. But if we had one global central hierarchy, it really couldn't support, you know, modular configuration at the module level. So basically we had everything that was on at the global level. Now that we have three layers. Again the layers are Global, Environment, and Module. These issues seemed to be fixed. Now what we can do is we can roll out changes based on an environment such as QA or UAT and the module level if we want to, just to provide something in a specific module and not affect other modules. Now the global layer is still there. And it's basically for anything that we would want to temporarily override. Then for example, if we don't have something at the environment level or something at the module level, we can still put it at the global level. Now since there's only one global hierarchy, it goes before the environment layer. So basically again, what happens is the module layer gets applied, the environment layer, then the global layer.
+
+So global is really for if we just don't have anything at the environment level or the module level. It also...and this is going to be the only place where we're going to put any kind of Hiera 3.0 or before back ends. Because in 3.0, there was no layer so everything was global. So everything here is going to be at the global layer. Now this is important because if you're going to be migrating to the new version of Hiera or the new configuration of Hiera, it makes sense to put everything at the global level. Now at the environment level, this is really considered the Hiera main layer. Now every environment has its own hierarchy. You would use a hiera.yaml file in the environment hierarchy to actually perform the configuration.
+
+And then we have the module layer. Now this layer can set any kind of default values. Or maybe, even merge behavior for a module's class parameters. It's a nice place to put code that would usually be in the params.pp file. Now remember that the module layer comes last. So the environment data is set by the user, gets to override any kind of default data set by the module author. So basically now every module in the module layer can have its own hierarchy configuration. In this video, you learned about the new version of Hiera and the three layers of configuration that Hiera now applies.
+
+Code2:
+Global $confdir/hiera.yaml
+/etc/puppetlabs/puppet/hiera.yaml
+C:\ProgramData\PuppetLabs\puppet\etc\hiera.yaml
+Environment <ENVIRONMENT>/hiera.yaml/etc/puppetlabs/code/environments/production/hiera.yaml
+Module <MODULE>/hiera.yaml/etc/puppetlabs/code/environments/production/modules/ntp/hiera.yaml
+Creating a Puppet Test Class
+
+[Topic title: Creating a Puppet Test Class. The presenter is Bob Hendry.] In this video, I'm going to set up a class that we're going to use to be configured by Hiera. So we're going to do this in a couple of different stages. What you see here is a code example of a configuration file called hiera.yaml or basically the hiera.yaml file. [He switches to the Notepad++ window. It contains the 136772.txt tabbed file. The code snippet is given in the transcript for reference under the heading, "Code3".] Now these YAML files are put on three different levels. We can do it at the global level or at the environment level or at the module level. And they're called layers as well. So we got a global layer, an environment layer, and a module layer. So here what we have is, we have a configuration file at the environment level. And we're just going to keep it simple. We're not going to put one at the module level or at the global level.
+
+So basically any machine, any Puppet agent in this specific environment is going to get this YAML file. Now what this YAML file does is the following. First of all, it specifies as version 5 on line 10. And we have some defaults. We have the datadir, which we're specifying on line 13, and this just says that we're using a data directory called data. And that is the name of a folder or a folder on a path that's relative to the environment. Again <ENVIRONMENT>/data.
+
+And on line 14, we're going to be using the built-in YAML back end. So basically what we are going to be doing is our data that we're going to be using in Hiera is going to be in a YAML file. Now we have different ones that can be used as well. But we're going to be using the legacy way of doing things and just using YAML. So then on line 16 we have the hierarchy. And on line 21 to 22, we just have some interpolation with the YAML file. And then we have on 24 and 25, the path Common data, and the path is common.yaml.
+
+Now this is going to be applied in different environments if we had them. And if we are using different layers of configuration, you know, a global or a module layer, we would have hiera.yaml files in those folders as well. But in our case, this is going to be the only one so it should be fairly easy to understand. Now the next step is to have something that's going to be configured by Hiera. So let me cut away and show you a code example here. Now what you see here is a manifest that we used to configure a Puppet agent. [The code snippet is given in the transcript for reference under the heading, "Code4".]
+
+Now this should look familiar to you. If you go through it really quickly, you should see that basically what we're doing is we're using a file resource that we specify on line number 47. And then we have some attributes. You know in ensure attributes, we have a content attribute on owner and a mode. But notice how we have some interpolation on lines 52, 53, and 54 where we're basically going to be plugging in the ssl, backups_enabled, and the site_alias. Now these values are going to be coming from Hiera. When we actually do the puppet apply, Hiera will go and use a configuration file. And grab those pieces of data and plug it in to this manifest.
+
+So let me break away. And show you what the data would look like. So I have some example – YAML files. [The code snippet is given in the transcript for reference under the heading, "Code5".] Like on line 61, I got common.yaml. And on line 67, I have a jenkins-prod-03.example.com.yaml. Now these are the back-end files that contain the data. Now if you take a look at 63 and line 64, we have the few values that are being set. For example, profile::hiera_test::ssl. Then we have backups_enabled on all the way down through line 67, 69, and 70. So basically our data is going to look like line 72 through 75. So in this video, you learned how to write a test class to use Hiera to configure Puppet.
+
+
+Code3:
+# <ENVIRONMENT>/hiera.yaml
+---
+version: 5
+defaults: # Used for any hierarchy level that omits these keys.
+datadir: data # This path is relative to the environment -- <ENVIRONMENT>/data
+data_hash: yaml_data # Use the built-in YAML backend.
+hierarchy:
+- name: "Per-node data" # Human-readable name.
+path: "nodes/%{trusted.certname}.yaml" # File path, relative to datadir.
+# ^^^ IMPORTANT: include the file extension!
+- name: "Per-OS defaults"
+path: "os/%{facts.os.family}.yaml"
+- name: "Common data"
+path: "common.yaml"
+
+Code4:
+class profile::hiera_test (
+Boolean $ssl,
+Boolean $backups enabled,
+Optional[String[1]] $site_alias = undef,
+) {
+file { '/tmp/hiera_test.txt':
+ensure => file,
+content => @("END"),
+Data from profile::hiera_test
+-----
+profile::hiera_test::ssl: ${ssl}
+profile::hiera_test::backups_enabled: ${backups_enabled}
+profile::hiera_test::site_alias: ${site_alias}
+|END
+owner => root,
+mode => '0644',
+}
+}
+
+Code5:
+# /etc/puppetlabs/code/environments/production/data/common.yaml
+---
+profile::hiera_test::ssl: false
+profile::hiera_test::backups_enabled: false
+# /etc/puppetlabs/code/environments/production/data/nodes/
+jenkins-prod-03.example.com.yaml
+---
+profile::hiera_test::ssl: false
+profile::hiera_test::site_alias: ci.example.com
+Data from profile::hiera_test
+-----
+profile::hiera_test::ssl: false
+profile::hiera_test::backups_enabled: false
+Coding a Puppet Module
+
+[Topic title: Coding a Puppet Module. The presenter is Bob Hendry.] In this video, I'm going to show you how you can set up a Puppet module. So I'm going to go over building a new module and then also looking at the code in existing module. Now, basically, when you want to apply a configuration to a Puppet agent, what you do is you create a module on the Puppet master. [He switches to the command prompt window and runs the ls -l command.] So right now I'm logged into the Puppet master [He runs the ls command.] and let me navigate down to the folder where we're going to create a module.
+
+So I'm at the root folder. [He runs the cd etc command.] And let me show you the directory structure. [He runs the ls command.] I'm going to navigate down to etc then the puppet. [He runs the cd puppet and the ls commands.] And then, in puppet – let me clear the screen. And we can either go to manifests or modules. [He runs the ls command.] So here what I'm going to do is I'm going to navigate down to modules. Now this is where all the modules exist on my Puppet master. So let me navigate to modules. [He runs the cd modules command.] And we'll see what's there. Now, if I do a ls, I'm going to see all the modules that are currently there. So we already have iisserver, lampserver, powershell, and windowsfeature. These are modules that I put on there already that I'm going to demo in a little bit. If I want to create a new module, there are various ways to do that. What I can do is I can issue the Puppet command – sudo puppet module generate. And then ubuntu depending on your dialect, -rahstack, R-A-H are my initials. So what this will do is this Puppet command will create a module hierarchy for me.
+
+So, basically, when we create a module, what we're doing is we're creating a directory structure under the modules folder. And you could see the files that were generated and the folder that were generated. Now we're really interested in the manifests folder and the file init.pp, which is going to be our code that's going to contain all of our module code within it. [He runs the clear command.] So what I'm going to do now is I'll navigate down to that file. I'll open it up and I'll show you what's in there. So let me do a ls. And notice that we have my new folder, ubuntu-rahstack. So let me navigate to it. [He runs the cd ubuntu-rahstack command.] And let's look at the file structure that was created. Now again, this file structure was created by me with the creating module command. [He runs the ls command.] So let me navigate to manifests. [He runs the ls -l command.] And then from here I want to look to see what files are underneath there. So let me navigate again to manifests and we'll look to see any of the module code that we have in there.
+
+Now, when we do this we're only going to really create kind of a stub. We need to put in, you know, all of the stuff [He runs the cd manifests command.] or the commands within the class to actually do some configuration. [He runs the clear command.] So, really, what we do is when we create a module is we're only creating kind of like the stub. [He runs the ls -l command.] We're creating the folder structure and creating this file called init.pp. So our next step is to see what we created in init.pp. So, to do that, I'm going to use nano. You can use vi, if you want. But I'm going to do sudo nano init.pp and open that file up. [The init.pp file opens.] Now notice that there's really not much in here. This was generated by me, but it's really just comments. What I need to do at this point is to put in my code for my actual module. Or probably put in, you know, my class file stuff in here. And as you can see I have a blank class. So, at this point, what I would do is I would put in my manifest code or my Puppet code to do configuration when a specific agent would require it.
+
+So, basically, this is how you would create a new module from scratch. [He switches to the command prompt window and runs the clear command.] What I'm going to do at this point is I'm going to go over one I've already created that already has code in it. And I, kind of, precoded it for us. [He runs the cd .. command twice.] So we can skip, you know, you watching me type this in. But, if I navigate to modules, let's look at what I have underneath here. [He runs the ls -l command.] I have iisserver and lampserver. These are the two that I've created off camera and I've put some code in that PP file. So we can go over it. [He runs the cd lampserver command.] And again so you don't have to watch me type this in. [He runs the ls -l command.] Let's go over lampserver. Now let me navigate to manifests. And, in manifests, let's look at that file that has some configuration code in it. [He runs the cd manifests command.] So, if I do a quick list, we should see it. Again, the file is going to be init.pp. [He runs the ls -l command.] So, at this point, we can use a text editor. I like using nano. You can use any one that you like. But at this point, I'm going to use nano to look at init.pp. So let me do a sudo to get root access. So nano init.pp.
+
+Now this is stuff or configuration code I already put in here. [The init.pp file opens. The code snippet is given in the transcript for reference under the heading, "Code6".] Now this is obviously going to be for a Linux agent where we're going to have a class here, which I call lampserver. I'm going to execute an 'apt-update'. I have different packages in here. I'm going to want 'apache2'. I'm going to want 'php5' and I'm also going to create a file resource. And I won't do that pretty quickly as I'm assuming that you know a lot of what this code does at this point. But anyway, this is the code that I put as part of my module. [He switches to the command prompt window.] And I put it in a class. Now, at this point what we need to do is we can take a look at the Puppet agent if we would like and then actually do the configuration. [He runs the clear command.] But those are the steps that we do if we want to create a module, [He runs the cd.. and ls commands.] or in this case, we could look at the code for a module. [He runs the cd.. command.]
+
+So let me go back to lampserver. [He runs the ls command.] I'll show you something else here. [He runs the cd.. command.] So, from lampserver, I'm going to navigate all the way down. [He runs the ls command.] And let me show you another module that we can use. Let me go into the manifests folder. [He runs the cd manifests command.] And show you how we actually plug this in. [He runs the ls command.] So now that I have my module, I can actually look at site.pp. Now, in site.pp, this is the manifest that gets fired when we have an agent that connects to the master and wants the configuration. [The code snippet is given in the transcript for reference under the heading, "Code7".] So here I have two nodes, a Linux agent called linuxagent.example.com and a Windows agent called windowsagent.example.com. These will correspond to each Puppet agent that wants to get the configuration. [He switches to the command prompt window.] So, in this video, you learned how to write a Puppet module.
+
+
+Code6:
+class lampserver{
+exec { 'apt-update':
+command => '/usr/bin/apt-get update'
+}
+package { 'apache2':
+require => Exec['apt-update'],
+ensure => installed,
+}
+service { 'apache2':
+ensure => running,
+}
+package { 'php5':
+require => Exec['apt-update'],
+ensure => installed,
+}
+file { '/var/www/html/info.php':
+ensure => file,
+content => '<?php phpinfo(); ?>',
+require => Package['apache2'],
+}
+}
+
+Code7:
+node default{ }
+node 'linuxagent.example.com' {
+include lampserver
+}
+node 'windowsagent.example.com' {
+include iisserver
+}
+Creating and Running a Puppet Class
+
+[Topic title: Creating and Running a Puppet Class. The presenter is Bob Hendry.] In this video, I'm going to show you how you can code and apply a Puppet class and its configuration to a Puppet agent. Right now, I'm logged into the Puppet master. [He switches to the command prompt window.] So what I'm going to do is we're going to navigate to the manifest that's going to contain the class that has the configuration for a Linux agent, which we're going to configure at the end of this video. [He runs the ls -l and the cd modules commands.]
+
+So let me look at some of the modules that I have. [He runs the ls -l command.] So let me do a cd modules, and look to see some existing modules that I have like iisserver and lampserver. Let's look at iisserver. This is going to be a class that we could use for a Windows agent. [He runs the clear command.] So when I'm logged into the Puppet master, I can navigate to iisserver. [He runs the ls -l command.] And then from here, I can navigate to manifests. And we can take a look at what we have under the manifests folder. [He runs the cd manifests command.] Now again, notice my file structure here, where I've got puppet/modules/iisserver/ and then manifests. [He runs the ls command.] So let me do a quick sudo and do an init.pp. Now what this will show me is this will show me a class that I have that contains the configuration code for a Windows-based machine. [The init.pp file opens. The code snippet is given in the transcript for reference under the heading, "Code8".] So the class has all my stuff in it. So it has all of my manifest code and my Puppet code to do my configuration.
+
+Now notice I had the features that I want installed, you know, like the Web-WebServer, the Web-Server, Web-Asp-Net45, and all the rest. And then, if I navigate down, I can look at the windowsfeature. For example, I need to make sure that '$iis_features' is present, I need to make sure that the 'Web-WebServer' is present. It has installed subfolders. And also it's got the installmanagementtools. And then, at the very end, I have a file resource. In this case, I have an absolute value for a path where I have 'c:/inetpub/wwwroot/info.aspx' and a parameter passing in there. [He switches to the command prompt window.] Then I ensure that it's present otherwise I build that file. [He runs the cd.. command.] So that's the class that I would have for a Windows agent that would request a configuration. [He runs the cd .. and ls commands.]
+
+So now what I'm going to do is let's take a look at lampserver, which is going to be a Linux-based class if a Linux agent requests the configuration. [He runs the cd lampserver, ls, and cd manifests commands.] So let me navigate down the manifests. [He runs the ls command.] And let's take a look at what we have in init.pp as far as our class goes. So let me go into nano. So the command would be sudo nano init.pp. [The code snippet is given in the transcript for reference under the heading, "Code9".] Now here's my class. Now this has all my configuration code for a Linux agent. So we can see here that we're going to install 'apache2'. We're going to make sure that 'apache2' is running. We're going to install 'php5'. Make sure that that's running. I'll make sure that it's installed. And also we're going to create a file resource. And we have the file folder path for that. [He switches to the command prompt window.] And if it exists, we're going to write over it. So, basically, that is my class file for a Linux-based agent. [He runs the cd ../.. command.]
+
+So we went over a Windows-based agent and a Linux-based agent. [He runs the cd .. command.] Now, at this point, what we need to do is we need to put in each of those classes in the main manifest. [He runs the clear and ls commands.] So, when the Puppet agent connects, we can apply. We being the Puppet master, can apply those configurations. [He runs the cd manifests command.] Depending on which agent is connecting to us, we're going to assign the correct class file. [He runs the ls -l command.] So, navigate, if you're following along with me, to site.pp. And this is under manifests. And let's open this up in a text editor. Let me do a sudo to open this file up. [The code snippet is given in the transcript for reference under the heading, "Code10".] Now, quite simply, we're looking at two different types of agents, one called linuxagent.example.com and one called windowsagent.example.com. And you can see in the include statement, these are the classes that exist in the modules that we're going to apply, either lampserver or iisserver.
+
+So let me do a clear. And let me close this and navigate to my Linux Puppet agent. So let me navigate to there now. And there we go. So right now, I'm logged into my Linux Puppet agent. So at this point, what we need to do is we need to apply that class. So simply, all is we need to do is just issue a puppet command that's going to go to the master. The master is going to look at the name of this machine. It's going to determine it's the Linux machine. [He runs the clear command.] And it's going to apply that class for the Linux agent. So here's the command that do so. So all is I need to do is do a sudo puppet agent --test. And at this point, once I hit Enter, the agent is going to go out to the master. The master is going to determine and resolve the name of the machine. It's going to determine which module to apply.
+
+In the module, we have the class, and it will apply to the machine. And it looks like everything completed successfully. It only took 3.82 seconds. Now, to test this install, we can take a look at the URL. And see if it installed that PHP file. So let me navigate to my web browser. And I'll paste in the URL, and I'll paste in that PHP file. And we should get the following. [A table under the heading, PHP Version 5.5.9-1ubuntu4.24, gets displayed. It contains two columns. The first column includes the text, Virtual Directory Support, and the second column includes the text, disabled.] So we have a good configuration. So what happened is the agent went out to the master. The master applied the class to the agent. And we're verifying it by seeing that this PHP file and Apache is up and running. So, in this video, you learned how to apply a class file.
+
+Code8:
+class iisserver {
+$iis_features = [
+'Web-Server',
+'Web-WebServer',
+'Web-Asp-Net45',
+'Web-ISAPI-Ext',
+'Web-ISAPI-Filter',
+'NET-Framework-45-ASPNET',
+'WAS-NET-Environment',
+'Web-Http-Redirect',
+'Web-Filtering',
+'Web-Mgmt-Console',
+'Web-Mgmt-Tools'
+]
+windowsfeature { '$iis_features':
+ensure => present
+}
+windowsfeature { 'Web-WebServer':
+ensure => present,
+installsubfeatures => true,
+installmanagementtools => true
+}
+file {
+'c:/inetpub/wwwroot/info.aspx': content => '<%@ Page Trace="true" Langua$ require => windowsfeature['Web-WebServer'],
+}
+}
+
+Code9:
+class lampserver {
+exec { 'apt-update':
+command => '/usr/bin/apt-get update'
+}
+package { 'apache2':
+require => Exec['apt-update'],
+ensure => installed,
+}
+service { 'apache2':
+ensure => running,
+}
+package { 'php5':
+require => Exec['apt-update'],
+ensure => installed,
+}
+file { '/var/www/html/info.php':
+ensure => file,
+content => '<?php phpinfo(); ?>',
+require => Package['apache2'],
+}
+}
+
+Code10:
+node default { }
+node 'linuxagent.example.com' {
+include lampserver
+}
+node 'windowsagent.example.com' {
+include iisserver
+}
+Implementing Parameterized Classes
+
+[Topic title: Implementing Parameterized Classes. The presenter is Bob Hendry.] In this video, I'm going to talk about passing parameters into classes. [He switches to the Notepad++ window. It contains the 136775.txt tabbed file. The code snippet is given in the transcript for reference under the heading, "Code11".] Now what you see here on the screen is a code example of some Puppet script. Now it should look fairly recognizable to you. Let me cover what I'm doing here. Basically what we have here is we have a manifest or some manifest code that sets some values for some resources and it's not using parameters. So I'm declaring a node on line number 2, a class on line number 7, and another class on line number 12.
+
+And I'm setting some resources, in this case a $file_name. So in the node, what I'm doing is I'm setting the $file_owner = "larry". Now file owner is a global variable, probably defined by facter. So I'm defining a $file_owner = "larry" and I'm including a bar class on line number 4. Okay, no big deal. Now, on line number 7, what I'm doing is I have a bar class and I'm setting the $file_name = "larry.txt" and I'm also including the class do_stuff.
+
+And on line 12, I have a class called do_stuff. It has a file resource, which I'm using the $file_name. I do an ensure attribute, so ensure the file equals whatever the file is equal to and I'm setting the owner on line number 15. Now, in neither of these cases am I passing any kind of parameters. So, basically, I have two different options to set different values for attributes. I can either hard code them directly in the class or in the node. Or what I can do is via facter, perhaps, create a custom fact and then use that fact as a global variable or as a global environment variable everywhere in the Puppet system.
+
+Now we still have, in that case, in both those cases, we still have a lot of duplication of effort where we don't have the flexibility of actually maybe setting these values dynamically. So we're kind of stuck with either a hard-coded value in our manifest or our class, or a hard-coded value in a fact, which is basically the same thing. [The code snippet is given in the transcript for reference under the heading, "Code12".] So what we can do is we can actually pass parameters in the classes that we see in this code example. So in this code example, what I'm doing here is I still have my nodes and my classes, but I'm passing in parameters at runtime, specifically if you look at line number 36. Now on line number 36, I have a class called bar. And when I'm instantiating the class called bar, I'm passing in larry and I'm passing in larry.txt. So, larry is going to be the owner and larry.txt is going to be the $file_name.
+
+So what I'm doing here is rather than having the bar class, having larry and larry.txt either defined as a global variable via facter or being hard coded, what I can do is I can define the class like I did, and pass in those values at runtime. Now I still have these values kind of hard coded, where, you know, the $owner = larry and the $file_name = larry.txt. I can make it even more dynamic if I wanted to and actually substitute variables for them, as well. But here, just for readability, I'm going to make it easy to understand, just by passing in larry and larry.txt.
+
+So we can take that concept and move it a step further. If you look at line 40, I have a class called do_stuff. And I'm passing in the owner of the filename. And if you look at the file resource, I have the file, the ensure, and the owner. So basically, in this code example, we're more flexible with how we're passing in the variables because in this case, what we're doing is we're passing in the variables as parameters when we're building the class. So in this video, you learned how to use classes without parameters and how to use classes with parameters.
+
+
+Code11:
+-- No Parameters
+node 'foo.com' {
+$file_owner = "larry"
+include bar
+}
+class bar {
+$file_name = "larry.txt"
+include do_stuff
+}
+class do_stuff {
+file { $file_name:
+ensure => file,
+owner => $file_owner,
+}
+}
+
+Code12:
+-- With Parameters
+node 'example.com' {
+class { bar: }
+}
+node 'example.net' {
+class { bar: owner = "harry" }
+}
+node 'example.net' {
+class { bar: file_name = "barry.txt" }
+}
+class bar($owner = "larry", $file_name = "larry.txt") {
+class { do_stuff: owner => $owner, file_name => $file_name }
+}
+class do_stuff($owner, $file_name) {
+file { $file_name:
+ensure => file,
+owner => $owner,
+}
+Implementing Class Inheritance
+
+[Topic title: Implementing Class Inheritance. The presenter is Bob Hendry.] In this video, we're going to talk about class inheritance. Now when you build any kind of Puppet code to set a resource, what happens is you either hard code your variables or what you can do is you can use interpolation with global variables, using facter perhaps, to actually get a value into a class. And possibly, you can also use classes that take arguments as you declare them.
+
+Now, in addition to all this, what you can do is you can have classes extending each other. So basically, what you can do is you could put the base architecture and the base values in a superclass and then in a subclass that inherits from the superclass, what you can do is you can override those values, or perhaps even extend them.
+
+If you're familiar with how inheritance works with other languages, such as C# or Java, this works basically the same way in Puppet. Although it's not as flexible as it would be in a third generation language, as in Java or C#. So what you can do is you can have a class. You can declare your resource in the class, you can declare your attributes in the class, and then what you can do is you can subclass that and then you can either extend those attributes or what you can do, you can override them.
+
+So let's look at a couple of examples here. [He switches to the Notepad++ window. It contains the 136776.txt tabbed file. The code snippet is given in the transcript for reference under the heading, "Code13".] In the code example here, I'm declaring a class on line 1. Now this is fairly straightforward, where basically I have a file resource and then a source. Now on line number 7, what I can do if I wanted to maybe extend that, without using inheritance, I can, you know, declare my class, I can try to include apache::proxy, which is the class I'm declaring on line 1, and then I can try to extend it with a file resource and then the source attribute for the file resource.
+
+Now the second block of code, from line 7 through line 11, will throw an error, because Puppet doesn't know exactly which file resource to use and which source attribute is actually valid. So there's different ways around this. What I can do is like on line number 14, is I can create a subclass that inherits the resources from the parent class. So basically, like on line 16, I have class myapp::apache, and it inherits from apache::proxy.
+
+So basically, I'm already getting the resource and the attribute from the superclass, and on line 17 and 18 what I'm doing is I'm choosing to override that. So basically, I have the file resource and I have the source attribute, overriding the file resource and the source attribute that we have on line 3 and line 4. So I really have some true inheritance here happening, and I implement that on line 16 where we have inherits. So basically inherits what it does is it inherits all of the stuff or the resources and the attributes from the parent class.
+
+I can also use some sort of parameters as well, like on line 21. What I can do is if I chose not to use inheritance or even with inheritance, I can still solve the same problem by passing on parameters. And you see that illustrated on line number 22, where I'm declaring a class called apache::proxy. And that class is going to take two variables or parameters that are going to be passed into it when it's being used. So on line 23 and line 24, on line 23 I have a file resource, and on line 24 I have a source resource. And that source resource is going to be set to a value of a parameter being passed into the class.
+
+So that leaves us on line 27, how we actually call the above class. So on line 28, I'm declaring apache::proxy, and I'm passing in two variables called param1 and param2. So in this video, you learned how to use Puppet code and how to use inheritance when defining Puppet code with the resources and the attributes.
+
+
+Code13:
+-- Declare a Class
+class apache::proxy {
+file { '/etc/httpd/conf/mods-enabled/proxy.conf':
+source => "puppet:///modules/apache/proxy.conf"
+}
+-- Below will throw an error
+class myapp {
+include apache::proxy
+file { '/etc/httpd/conf/mods-enabled/proxy.conf':
+source => "puppet:///services/myapp/proxy.conf"
+}
+-- You can override resources with class inheritance
+-- by creating a subclass that inherits resources from the parent class.
+class myapp::apache inherits apache::proxy {
+file { '/etc/httpd/conf/mods-enabled/proxy.conf':
+source => "puppet:///services/myapp/proxy.conf"
+}
+-- parameterised class
+class apache::proxy (varl, var2) {
+file { '/etc/httpd/conf/mods-enabled/proxy.conf':
+source => "puppet:///modules/apache/proxy.conf"
+}
+-- Calling the above
+class { 'apache::proxy':
+var1 => 'param1',
+var2 => 'param2';
+}
+Resource Types
+
+[Topic title: Resource Types. The presenter is Bob Hendry.] In this video, let's take a look at Puppet resources. Now resources, quite simply, are objects or actions that Puppet uses to configure something, and I'm being vague on purpose because whatever Puppet really configures is up to you. So let's go over the basics of looking at resources. What you see here is a manifest. [He switches to the Notepad++ window. It contains the 136777.txt tabbed file. The code snippet is given in the transcript for reference under the heading, "Code14".] Now what we do is in a manifest, or in a class, or even in a module, what we can do is we can define resources and the actions to perform on them. Now there are just dozens and dozens of Puppet built-in resources and you also can define your own, but here we're going to look at some built-in resources.
+
+Now basically a built-in resource has two different parts. It has the resource definition and it has attributes. And the attributes are the property that makes up that resource. Now, for example, here in this code example, we have a package resource, we have a service resource. Now the package resource is a software package that usually needs to be either required or downloaded or running, so here on line number 18, what I'm specifying in the package resource is we should have mysql-server actually referred to in Puppet. In this case, it's required and it has to be installed.
+
+But also, we can have resources that explain or basically define something that needs to be running, such as on line 24, we have a service resource. So we have a package resource and a service resource. And also, on line 29, we have another package resource. So we have resources that define how the system is supposed to look. Now, they're usually divided into categories. And, for example, we have different kinds of running resources, such as a service resource or maybe even like a daemon resource.
+
+And then we have the kinds of resources that define what should be installed, and those are usually defined as package resources and possibly even file resources because you see a file resource defined here on line number 35. So on line 35, basically what I'm doing is I'm defining a file resource and I have the path in there such as var/www/html/info.php. And underneath that I have some attributes or properties that define a little bit about that resource. So as I scroll up, we have some additional ones here. We have some installation resources. Again, a package resource, a service resource, and on line number 2 we have an execution resource. Remember, resources don't always define something, they define things that can happen. [He switches to the command prompt window.]
+
+So let me cut away and go to a Puppet agent and write some commands to look at some resources. If you want to take a look at a resource, we could quite simply just type in puppet resource, the type of the resource, in this case the user resource, and the name of it. [He runs the puppet resource user ubuntu command.] So basically, I'm getting puppet resource, user, and then the name of the user, and then if that resource exists we're going to see that resource echoed back to us. [He runs the puppet resource user daemon command.] So I'm going to look at a different resource here, a user resource, look at daemon, and we get the user resource, we get the name of it and the properties that make it up.
+
+So what you can do if you want to look up these resources is you can just write the command line command to do so. [He runs the puppet resource package puppet command.] So in this case, if I want to look at the package resource called puppet, I can look at that as well. So if you want to look just in general about resources, a good command to use would be puppet resource and just the generic help. And I'm just going to put in the runtime parameter help and then you can list through this and look at all the different things that you can do with resources insofar as looking up the resources that are running on the system.
+
+So in this video, you learned about the Puppet resources and specifically we took a close look at the Puppet built-in resources.
+
+
+Code14:
+# execute 'apt-get update'
+exec { 'apt-update': # exec resource named 'apt-update'
+command => '/usr/bin/apt-get update' # command this resource will run
+}
+# install apache2 package
+package { 'apache2':
+require => Exec['apt-update'], # require 'apt-update' before installing
+ensure => installed,
+}
+# ensure apache2 service is running
+service { 'apache2':
+ensure => running,
+}
+# install mysql-server package
+package { 'mysql-server':
+require => Exec['apt-update'], # require 'apt-update' before installing
+ensure => installed,
+}
+# ensure mysql service is running
+service { 'mysql':
+ensure => running,
+}
+# install php5 package
+package { 'php5':
+require => Exec['apt-update'], # require 'apt-update' before installing
+ensure => installed,
+}
+# ensure info.php file exists
+file ( '/var/www/html/info.php':
+ensure => file,
+content => '<?php phpinfo(); ?>', # phpinfo code
+require => Package['apache2'], # require 'apache2' package before creating
+}
+Using Resources (Code)
+
+[Topic title: Using Resources (Code). The presenter is Bob Hendry.] Here I'm going to talk about how to use resources in Puppet code. [He switches to the command prompt window.] What you see here is I'm logged in to a Puppet master and what I'm going to do is I'm going to put in some resources and configure a Puppet agent based on those resources. So the first thing that we need to do is we need to navigate to where we're going to put our Puppet code. [He runs the clear command.] Now we can do it in a variety of different spots. [He runs the cd .. and ls commands.] We can built a manifest, [He runs the cd.. command.] we can build a module, [He runs the ls command.] or we can build a class. In this case, I'm just going to kind of go through a little of each here, [He runs the cd etc command.] but let me navigate to my main manifest. [He runs the ls command.] And on this version of Puppet, I can just go to my puppet folder. [He runs the cd puppet command.] And under my puppet folder, if I just do a quick list to see what's there, I can see that I have a manifests folder and a modules folder. So I'm going to navigate to my manifests folder and there's a file here that's going to be the main manifest for any Puppet agent that connects. [He runs the cd manifests and ls -l commands.]
+
+So just to do a quick list here, you'll see that we have site.pp. Now, what this is is this is a manifest that's going to be applied for any Puppet agent that connects to this Puppet master. So upon further review of this, we can take a look at what's contained in site.pp. [He runs the sudo nano site.pp command. The site.pp file opens. The code snippet is given in the transcript for reference under the heading, "Code15".] And I have some code here already written for us.
+
+Basically what I'm doing here is I'm checking for two nodes. I'm looking for a Puppet agent called linux or linuxagent.example.com and one called Windows agent. [He switches to the command prompt window.] And so the Puppet agent will be configured differently depending on what the agent is. [He runs the ls and cd .. commands.] So what I'm going to do here is I'm going to look at the class that's going to be applied to the Linux agent when the Linux agent connects to the Puppet master to get configured. [He runs the cd modules and ls commands.] So let me quickly go under modules and the module that I'm interested in is lampserver. [He runs the cd lampserver and ls commands.] So let me navigate to lampserver, and there we have a folder called manifests. [He runs the cd manifests command.] So if I navigate to the manifests folder, I should have a manifest here called init.pp. [He runs the ls command.] Now, what this is is this is all my resources that are going to be applied and more specifically my Linux agent. So let me open this up in a text editor and you'll see all the resources that I'm declaring here. [He runs the sudo nano init.pp command. The init.pp file opens. The code snippet is given in the transcript for reference under the heading, "Code16".]
+
+So basically I have them all into a class, which is basically a collection of resources. So let's just look over them briefly. I have an execution resource. I have a package resource. I have a service resource, another package resource, and the file resource. So these are the resources that I'm defining in my manifest or my Puppet code that are going to be applied or at least evaluated once I get a Puppet agent that runs that specific module. [He switches to the command prompt window.] And in this case, we had the name of the Puppet agent called Linux Puppet agent or a similar name.
+
+So let me navigate now to my Puppet agent. Now this is the Puppet agent called linuxagent that is going to go to the Puppet master and apply the specific resources as part of its configuration. [He runs the clear command.] Now all is I need to do is to do so is type in the command puppet agent and then we'll put in test. And if I don't have sudo resources, I need to specify sudo. We'll see, and it looks like I do. So I'm going to try this under sudo because I need to have sudo resources to do this or sudo privileges. So let me retype this as sudo puppet agent --test. And what will happen is hopefully the puppet agent will go to the master, give it the facts, the master will download the catalog to the agent, and the agent will apply the catalog with the resources that we specified in that file. So in this video, you learned how to use Puppet resources and code for them and configure a Puppet agent.
+
+
+Code15:
+node default {}
+node 'linuxagent.example.com' {
+include lampserver
+}
+node 'windowsagent.example.com' {
+include iisserver
+}
+
+Code16:
+class lampserver{
+exec { 'apt-update':
+command => '/usr/bin/apt-get update'
+}
+package { 'apache2':
+require => Exec['apt-update'],
+ensure => installed,
+}
+service { 'apache2':
+ensure => running,
+}
+package { 'php5':
+require => Exec['apt-update'],
+ensure => installed,
+}
+file { '/var/www/html/info.php':
+ensure => file,
+content => '<?php phpinfo(); ?>',
+require => Package['apache2'],
+}
+}
+Resource Attributes and Types
+
+[Topic title: Resource Attributes and Types. The presenter is Bob Hendry.] In this video, we're going to discuss resource attributes and types. Now, an attribute is a thing or a kind of service that Puppet uses to configure, or a process in which to use some kind of configuring. [He switches to the command prompt window.] Now, when we have different resources, you have the different types of resource, such as file resources, package resources, and user resources. And depending on the type of resource that you're going to be using, you're going to have different attributes. [He runs the cd .. command.] So, for the remainder of this video, we're going to cover just some attributes for some popular resources you might use. [He runs the cd .. and the clear commands.]
+
+So right now, I'm logged in to a Puppet master. So, we're going to navigate around a little bit [He runs the ls command.] and go to some specific places where we're going to have some manifest code, [He runs the cd etc command.] or perhaps some module code, [He runs the ls command.] or some classes, and we're going to use some example resources, and talk about some of the attributes that make them up. Now, I'm going to navigate to the puppet folder, [He runs the cd puppet and ls commands.] and in the puppet folder I have two folders that are interesting. I have the modules, and I have manifests. [He runs the cd modules command.] Now in the modules, we have all the modules that we currently have in the Puppet master. [He runs the ls command.] Now in this case, I just have a handful here. iisserver, lampserver, powershell, rah-con, ubuntu-rahstack, and windowsfeatures. [He runs the cd iisserver and ls commands.]
+
+So, let's navigate to the IIS module, look at some resources that are in the manifest, and talk about some of the attributes that are included as part of the manifests file. [He runs the cd manifests and ls commands.] So, I'm going to open up in a text editor, the file init.pp. Now this is the manifest that gets executed as part of the iisserver module. [The complete code is given in the transcript for reference under the heading, "Code17".] Now, here where I have a class, I've got a class that's called iisserver. Now here, under there, I got the $iis_features and all of the features, which are sort of attributes for the web server itself.
+
+Now, we also have a resource called windowsfeature, and another one called windowsfeature. And if you look at the resources, they have attributes like ensure => present and then, installsubfeatures => true, and installmanagementtools => true. So basically it's a value pair. You have the attribute, and then you have the value. Like, again, here we have ensure => present, installsubfeatures => true, and installmanagementtools => true. And then for the file resource, we specify the absolute path, and that's part of the file resource. And then we have one attribute, and the attribute that we have there is require. So require => windowsfeature['Web-WebServer']. So the attributes are going to be different depending on the resource that you're using. Like for example, you wouldn't necessarily have require as an attribute for, you know, a bunch of other resources, but it makes sense to have it like in file. And again here, for like, windowsfeature, we have ensure => present. Now that's going to be an attribute that you're going to be using probably in a lot of other resources as well.
+
+So basically, the resource types kind of boil down to functionality. And exactly what you're going to be doing. Or the action you're going to be performing. [He switches to the command prompt window.] And the attributes just make sense and are set specifically to the resource type. [He runs the cd .. command twice.] So we could look at different attributes. [He runs the ls command.] So I'm going to navigate up and look at a different module. So I looked at iisserver. Now, here what I'm going to do is I'll take a look at lampserver because lampserver – we have some attributes and some resources that are used for Linux machines. [He runs the cd lampserver and ls commands.]
+
+So they're going to be a little bit different. So, let's take a look at those. So I'm going to navigate to lampserver. And then navigate to manifests. And then under manifests, I'm going to look for some code in which we can look at our resources and our attributes. [He runs the cd manifests and ls commands.] So the file that we're looking for is init.pp. Now, init.pp is the manifest that is going to be fired for the lampserver module, for whoever requests it. Right now, it doesn't matter. [He runs the sudo nano init.pp command. The init.pp file opens. The complete code is given in the transcript for reference under the heading, "Code18".]
+
+Let's just take a look at the code. So I bring it up in nano and we can see we have a class and we can see that we have resources such as a package resource, a service resource, and then another package resource. Now under there, we see the attributes. So for the package attributes, we have require and ensure. So require and then it basically is set to execution of the apt-update executable file and then, ensure => installed. So basically, we need to have the package php5 installed. And then we have a file resource. In the file resource, you know, ensure the file is there, it has the content of the file, and it also has the require. So basically, the attributes define exactly what's going to happen to the resource as part of either the installation or the update process. [He switches to the command prompt window.] So in this video, you looked at some more resources and looked at the attributes for these resources, and the types that are being used.
+
+
+Code17":
+class iisserver {
+$iis_features = [
+'Web-Server',
+'Web-WebServer',
+'Web-Asp-Net45',
+'Web-ISAPI-Ext',
+'Web-ISAPI-Filter',
+'NET-Framework-45-ASPNET',
+'WAS-NET-Environment',
+'Web-Http-Redirect',
+'Web-Filtering',
+'Web-Mgmt-Console',
+'Web-Mgmt-Tools'
+]
+windowsfeature { '$iis_features':
+ensure => present
+}
+windowsfeature { 'Web-WebServer':
+ensure => present,
+installsubfeatures => true,
+installmanagementtools => true
+}
+file {
+'c:/inetpub/wwwroot/info.aspx': content => '<%@ Page Trace="true" Langua$
+require => windowsfeature['Web-WebServer'], }
+
+Code18:
+class lampserver{
+exec { 'apt-update':
+command => '/usr/bin/apt-get update'
+}
+package { 'apache2':
+require => Exec['apt-update'],
+ensure => installed,
+}
+service { 'apache2':
+ensure => running,
+}
+package { 'php5':
+require => Exec['apt-update'],
+ensure => installed,
+}
+file { '/var/www/html/info.php':
+ensure => file,
+content => '<?php phpinfo(); ?>',
+require => Package['apache2'],
+}
+}
+Working with Custom Resource Types
+
+[Topic title: Working with Custom Resource Types. The presenter is Bob Hendry.] Now Puppet has a ton of built-in types that you can use to do about anything from file types to resource types to types that have to do with running gaming jobs or even installing packages, but there are going to be times where you may want to create your own type. Now basically, creating your own type is a fairly easy thing to do. And you refer to your type and you set your type and the attributes on your type in the same fashion than you would, if you had a custom core type that you're using for Puppet.
+
+So I have a code example here that basically abstracts out the syntax that you would use to create your own custom type. [He switches to the Notepad++ window. It contains the 136780.txt tabbed file. The code snippet is given in the transcript for reference under the heading, "Code19".] Now again, custom types are to be used if you have functionality that's not really covered in any other type that may be out there. Now types are fairly easy to work with because you can basically use Boolean logic to look at the different values for a type and to set them.
+
+For example, you can have in a manifest, like an if statement to look at a type and look to see if it's equal to something. For example, if you're using a core type to look at a specific service, you can look at the core type and look to see if any attribute, you know, that has to do with it running is true or false or whatever. And then you could, you know, have the same converse logic to set it. For example, if it's not running, make it running or if it is running, stop it running.
+
+Now remember that types are used to really to set the state of a system or the desired state of the system, you know, such as if something is installed or not, if something is running or not, if a file exists, and if a file exists, perhaps the content should be something. So we use types to do that. Basically, you know, we have if statements in our manifest that we'll look to see, you know, what the value of a type is and if it doesn't fit what we want it to be or put in other words if it doesn't fit the desired state, we can make it the desired state.
+
+So when we do a custom type, it's really along those lines where we could build a custom type with these attributes that define exactly what the desired state of a specific action is supposed to be. So basically we have something that looks like this where we have Puppet type and we get the explain or declare in our declarative language what the new type's name is. And then we have the parameters that we might want to pass into it. Like, for example, here I've got a newtype, you know, that's defined as like a sql database, where we're actually going to look at it and determine, for example, the type could be mysql or postgresql. It could be Oracle. It could be SQL server. It could be anything that we really want.
+
+And within it we get to define the parameters. Like in this case we have the name. We have the user. We have the password, the host, the host port, and just to show you that, you know, on lines 2 through 6 we're defining the new parameters or the parameters, and then we could define the defaultto, such as on line 7 and 8, where I have the defaultto as standard.
+
+And the default for newvalues as standard, and I have a pattern match in there as well. And then on line 10 we have another new parameter, and we're passing in values on lines number 12. So basically what we would do is we would compile this and then add it to the Puppet master. Now when we add it to the Puppet master, it basically becomes just like a core type. In a very similar fashion that we use facter or we could use facter to define our own facts, we can use Puppet, specifically a Puppet master, to define exactly what our new types are.
+
+And as we define our new types, our new types can be referred to and set exactly like a core type. So after a while, after we define our own custom types, it's really hard to determine exactly what's actually custom and what's actually core, which is really the kind of the point I'm trying to make here, that when you build a custom type it acts just like a core type. So, in this video, you learned how to write custom types in Puppet.
+
+
+Code19:
+Puppet::Type.newtype :sql, :is_capability => true do
+newparam :name, :namevar => true
+newparam :user
+newparam :password
+newparam :host
+newparam :port do
+defaultto :standard
+newvalues(:standard, /^\d+$/)
+end
+newparam :database
+newparam :type do
+newvalues(:mysql, :postgresql)
+end
+end
+Resource Abstraction Layer
+
+[Topic title: Resource Abstraction Layer. The presenter is Bob Hendry.] In this video, I'm going to talk about the Resource Abstraction Layer, or the RAL, within Puppet. Now basically RAL is an acronym that stands for resources or resource singular, abstraction, and layered. Now basically how Puppet works is we have resources. Now Puppet is really built around resources. If you think about how Puppet works, it's fairly simple to understand. What happens is a Puppet agent goes to the Puppet master and gives the Puppet master facts about the system. Now what the Puppet master does is it looks at the resources that are supplied in the manifest that are going to configure the Puppet agent. So, for example, we'll have a package resource that might need to be installed and we may have a service resource that needs to be running, or we'll have a file resource that needs to be present in a certain location with a certain amount of contents to it. So basically what's happening is the resources are really determining what gets configured on the Puppet agent. So the resources are really the pillar of Puppet in how this configuration actually works.
+
+Now the second letter in that acronym A, is for abstraction. Now this just means that everything is encapsulated from you. Now remember that Puppet is declarative. It doesn't specify how something gets configured, just that it is configured. It gives the end results. When you write a Puppet manifest or a Puppet class or a Puppet module and you write it with Puppet code, you're not specifying exactly how Puppet is going to configure the agent. We don't say use these steps to make sure that the service is running, or go through the following steps to make sure a certain package is installed, or go through the following steps to make sure a file is in a certain spot. So all of this is abstracted from us, and we just call this the abstraction layer in Puppet.
+
+And the third is L for layering. Now we have different layers of configuration within Puppet. [He switches to the command prompt window.] We have global, environment, and module. So we could determine exactly – based on the layer exactly – what gets configured. [He runs the puppet describe user --providers command.] Now on the screen here, what I can do is I can take a look at some of these resources and just kind of go through the Puppet master and scroll through some of these resources and take a look at them. Now, what you're going to do is when you're doing your Puppet coding within your manifest, you don't really necessarily worry about the abstraction part of it, because as I mentioned, the abstraction is really hidden from you, because Puppet is declarative, meaning that we don't say how it does something, just that it does do something. So basically all we do is we just configure the resources and then the desired state and then determining exactly how we configure our system is going to depend on where we actually put our Puppet code and our manifest. Either we do it at the global level, we do it at the environment level, or we can do it at the module level. So in this video, we've learned a little bit more about the Resource Abstraction Layering model of Puppet and how it's applied.
+Exercise: Design a Puppet Solution
+
+[Topic title: Exercise: Design a Puppet Solution. The presenter is Bob Hendry.] In this exercise, you will use Hiera to configure Puppet, code a module to be used by Puppet, use a Puppet resource, and finally configure a Puppet agent. Now pause the video and come up with your solution. After you come up with your solution, resume the video and compare your solution to what I came up with. [He switches to the command prompt window.]
+
+Hello and welcome back. Did you come up with your solution? Let's compare your solution to mine. Now we have to do this a little bit out of order. Before we can have Hiera configure our module, we have to build the module. So, right now, I'm logged in to the Puppet master. [He runs the sudo puppet module generate rah-con command.] And I'm going to create a module by sudo puppet module generate. And I'm calling the module rah, which are my initials, con. As you can see what happens is the Puppet master builds the module.
+
+Now the next thing we need to do is we need to code a manifest for this module. So, what I'm going to do is I'm going to look at our default manifest and modify it. [He runs the cd rah-con and ls commands.] You can create one if you like. Or you can do what I'm doing, which is just modifying the default one. So I'm going to go the hard way into the folder. So you can see my navigation. So I'm going to go to cd manifests. [He runs the ls command.] And we should be able to see init.pp. Now what we can do now is we can configure this manifest to use a resource. But if you open this manifest, you're going to see that it really has nothing in it. [He runs the sudo nano init.pp command. The init.pp file opens.] So it's up to us to put in any kind of Puppet configuration. So you can scroll through it and you'll see that there's really nothing here but comments and kind of a stubbed-out version of the class.
+
+So I'm going to scroll all the way to the bottom to show you that we really don't have much here. So, at this point, what we can do is we could add our Puppet code to do the configuration. [He points to the class con { } code.] And I'm not a really big fan of using vi or nano. So we're going to use Notepad++ to do our configuration. So the next step is to configure a resource. [He switches to the command prompt window.] Now I didn't say which resource to use. So you could pretty much have picked any of them. So I'm going to use a file resource.
+
+So I'm going to pan away now from my Puppet master to Notepad++. [The 136782.txt tabbed file is open. The complete code is given in the transcript for reference under the heading, "Code20".] And notice I have the path of the file and the name of the file, which is init.pp. And I have a resource that I'm using if you take a look from line 7 all the way down to line 17. So basically I'm specifying a file resource. And I have ensure => file. And I'm putting in some content. And then the owner I'm putting in on line 16. And the mode on 17. Now, if you look at lines 12 through 14, is I have some interpolation that I'm going to be using for ssl, backups_enabled, and site_alias. So these would have to be specified somewhere in hiera.yaml file either at the global level, the environment level, or the module level. [He switches to the command prompt window.]
+
+Now after I do that, the next step is to log in to the Puppet agent, which I am logged in to here. And at this point all I need to do is apply my configuration. So I do that by doing a sudo puppet agent --test. Now what will happen here is the Puppet agent will go to the master, give it the facts, and then the master will download the catalog or push the catalog to the agent where the agent will apply the configuration. So we're all done. Congratulations, you finished the exercise.
+
+
+Code20:
+# /etc/puppet/modules/rah_con/init.pp
+class profile::rah_test (
+Boolean $ssl,
+Boolean $backups_enabled,
+Optional[String[1]] $site_alias = undef,
+) {
+file ( '/tmp/rah_test.txt':
+ensure => file,
+content => @("END"),
+Data from profile::rah_test
+-----
+profile::rah_test::ssl: ${ssl}
+profile::rah_test::backups_enabled: ${backups_enabled}
+profile::rah_test::site_alias: ${site_alias}
+| END
+owner => root,
+mode => '0644',
+}
+}

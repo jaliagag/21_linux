@@ -1,0 +1,281 @@
+
+Configuring Puppet Environments & Managing Files
+
+Puppet has robust file functionality and runs in multiple environments.Discover how to get Puppet to work with files and how to set up and configure multiple Puppet environments.
+
+Table of Contents
+
+    Using the Environment on Puppet Master
+    Setting the Client Environment
+    Puppet Search Path
+    Evaluating Templates
+    Basics of Using Templates
+    Coding Techniques of Templating
+    EPP Templates
+    Using File Functions
+    Delivering Files with Puppet
+    Advanced File Functionality with Puppet
+    Exercise: Use Puppet Files and Environments
+
+Using the Environment on Puppet Master
+
+[Topic title: Using the Environment on Puppet Master. The presenter is Bob Hendry.] In this video, I'm going to talk about Puppet environments. Now most of the time when we develop, we develop in more than one environment. That's kind of hard to see when you're testing Puppet or just kind of playing with Puppet. Because when you're doing that, you're probably only using one environment. But in reality, we all use different environments to do our development. Like for example, we may have a series of computers that are for development. We may have a series of servers that are for QA. And we may have a series of servers that are for user acceptance and then for production.
+
+So obviously, when we're promoting code either configuration, or code, we're promoting it usually from a dev machine, to a test machine, to UAT, and then to production. So when we do configuration, the way we configure these different environments are probably going to be different as far as Puppet's concerned. I'm meaning that when we have a bunch of dev machines, we may have a specific number of packages that are going to be downloaded and installed on that dev machine or that series of dev machines. And then, you know, once we promote our application from development into test, we probably have the test servers configured a little bit differently and then the UAT servers again configured differently still.
+
+So it's important to understand the concept of an environment in Puppet. Now if we want to get the environment of the Puppet master, we can just use the environment global variable. So it would be the dollar sign environment and that would get us or set us the environment within Puppet. So basically what we need to do is on the master is we can define inner-manifest or any kind of code that we write, we can either get or we could set the environment of our actual configuration that we want to push down, as far as we're pushing down the catalog of the Puppet agent.
+
+So in this example here, [The 136783.txt file is open in the Notepad++ window. The complete code is in the transcript for reference at the heading "136783.txt".] I have an example of some manifest code that we may use to determine exactly which environment that we're using. I have three different nodes here. I have a default node, which I'm including Puppet. And I'm also having a node here that I have node production and here it's default. So on line 4 and 5, we have our production node that inherits from the default node. So we have node inheritance where we have a super class, being node default, including Puppet. And then on line 4 and 5, we have the production node that inherits a default node.
+
+And on line 6, 7, 8, 9, and 10, I have a development node. Now on the development node, I am defining a class puppet and I'm setting my environment or basically an environment variable. Or, in this case, this would be an attribute for class equal to dev. And then on line 11 and 12, what I'm doing here is I'm just setting the nodes and then the specific paths. Like on line 11, I have the node and I have the path and the different folder structure where we could find this environment.
+
+So basically, when we start writing a Puppet code, this environment is going to roughly translate to the name of a folder. So for example when we write manifest code, we can have manifest code in the specific environment. More specifically, if we're doing something like using Hiera. In Hiera, we have three different layers of configuration. We have the global configuration, we have the environment configuration, and we have the node configuration. So what we can do in Hiera is just specify the heira.yml file in each specific or whatever specific environment that we want to actually perform that configuration.
+
+So basically, environments split up how we configure our Puppet agents. Like I mentioned, we don't want to have the same agents constantly being configured the same way because we want them to be configured based on what their environment actually is. So in this video, you learned a little bit about Puppet environments and how the Puppet master uses the environment variable to configure Puppet agents.
+
+136783.txt:
+node default {
+include puppet
+}
+node production inherits default {
+}
+node dev {
+class {'puppet':
+my_environment => 'dev'
+}
+}
+node /.*dev.example.com$/ inherits dev {}
+node "test.example.com" inherits dev {}
+Setting the Client Environment
+
+[Topic title: Setting the Client Environment. The presenter is Bob Hendry.] In this video, I'm going to cover how you can set the environment for a Puppet agent. Now most puppet agents that you're going to be running are going to want to specify a different environment, depending on which environment the Puppet agent belongs to. For example, you might have a group of Puppet agents that belong to a development environment or you might have a group of Puppet agents that belong to a test environment or perhaps even a user acceptance testing environment or a production environment.
+
+Now when this happens, [The Terminal window opens.] when the Puppet agent requests configuration from the master, you're going to want to, in most cases, give a different configuration or different catalog to the Puppet agent depending on which environment it belongs to. So what I'm going to show you is an easy way that you can set this. So right now, I'm logged in to a Puppet agent and it just so happens to be a Linux Puppet agent. [He executes the commands, cd puppet and ls.] So what I'm going to do is I'm going to navigate to the root Puppet folder and show you a configuration file that you need to set. Now the configuration file is called puppet.conf, or puppet conf.
+
+Now puppet conf is going to have all of our core Puppet configuration for this agent. So I'm going to open this up in a text editor. So I'm going to navigate and issue a sudo nano puppet.conf. Now let's take a look at some of these configuration settings. Now under main, we have the server, the logdir, the vardir, the ssldir, the rundir, the factpath, the templatedir. Then we have the prerun_command and the postrun_command. And, at the bottom, we have some more configuration as far as the [master] goes.
+
+We're concerned with the middle where it says [puppetd]. Now here we have [puppetd]. We have environment = Testing. Now this is where we set our environment. So now what is going to happen is when the Puppet agent goes to the [master] and it requests configuration. One of the steps it does, one the initial steps it does is, it uploads or it gets the sets of facts from this Puppet agent and it uploads it to the Puppet master.
+
+Now these facts are really the equivalent of global variables or environment variables. And one of them now is going to be the environment. So now what we can do is when we're coding our Puppet code, our manifests, our modules or our classes in the Puppet master, what we can do is we could put in conditional logic. For example, we could say if the environment equals to Testing, we're going to serve, you know, these manifests or we're going to apply these different resources from the specific classes.
+
+So basically it allows us to have some kind of branching operation now, depending on what environment the Puppet agent belongs to. So we can change the environment to testing, to development, to UAT. It's really just a string. It doesn't really have to be more complicated than that. So that way, it gets uploaded and treated as a fact on the Puppet master. And then in the Puppet master we can put conditional logic within our manifest to determine exactly how this agent is going to get configured. So, in this video, you learned a little bit more about Puppet environments and how you can set the environment on a Puppet agent.
+Puppet Search Path
+
+[Topic title: Puppet Search Path. The presenter is Bob Hendry.] Now in this video, we're going to talk a little bit about the Puppet search path. Now when you set the environment, Puppet sets the environment on the agent and it gets transferred to the master. Now Puppet also supports the use of dynamic values if we're doing something as part of the environment configuration. So rather than defining static values, what we can do is we have the ability to create custom facts if we want to. And then create client environments based on some other client attributes or maybe even an external data source.
+
+So we don't have to hard code it. The real way that we should do it is by using facter. What we can do with the facter is we can take a specific fact, we can export it, and create it as an external fact. And then have that be our environment. Now, as far as searching for the stuff, we can set this in a variety of different places. Or for example, we can put it at the command line. We could put it in an environment-specific section. So there is a way that Puppet uses to actually search for this. So when you're setting the environment, Puppet uses a simple search path to kind of determine which configuration needs to be applied on the target machine. So really it really depends on where you put it because if you have different environment settings, you know, Puppet is going to find one of them kind of first.
+
+So in the same way that Puppet uses the search path, you know, for finding facts and for finding modules, it also will do the same for picking up appropriate values that need to be applied to the environment. So let's go over to different location where Puppet can search and find the value of the environment. There's really just five of them.
+
+Now first it will look to see if the value is specified at the command line. [The Terminal window is open.] And then it'll check to see if the values were specified in an environment-specific section. And then it'll check to see if the values were specified in an executable-specific section. And then finally, it'll look to see if the values are specified in the main section. So Puppet will look through those locations and determine through that search path were to find and apply a specific value. So, in this video, you learned how to use the Puppet search path.
+Evaluating Templates
+
+[Topic title: Evaluating Templates. The presenter is Bob Hendry.] In this video, I'm going to talk about the concept of evaluating a template. Now before I go into what a template is, let me just explain to you the need for a template. Let's just say, for example, you have a manifest. And in your manifest, you have a file resource. Your file resource specifies your resource and may be five or six different properties or attributes of your resource. And let's just say you have that same code in many different manifests, or many different classes, or manifests within modules. So rather than repeating the same really string of code and all those different manifests, which you can elect to do is you can elect to create a template.
+
+What the template is, is the template really is a long string that you can insert anywhere. So, for example, if I had the same code, you know, for a file resource with the same attributes, what I could do is I can create a template for it and just use the template. That way if I need to make a change, I just need to make a change once in the template and don't have to make the change everywhere where that's being referred to. So let me show you where you could find your templates. You could find your templates under the puppet folder. And then you have modules and manifests and then templates.
+
+So under the templates folder, you'll find all the templates that are available for a specific environment. So this is where you would actually put your template code, [The 136786.txt file is open in the Notepad++ window.] if you wanted to use a template rather than having duplicate string values in multiple manifests. And this is what a template would look like. Now, we have epp and we have template on line number 8. [The code displayed is # template(<FILE REFERENCE>, open square bracket<ADDITIONAL FILES>, ...closed square bracket).] So here we have two different file resources. So the first one is a file resource and it gives the path. And we have the ensure equals file and we have the actual content.
+
+And we have the same as far as our file resource on lines 9, 10, 11, and 12. [The code is in the transcript for reference at the heading "136786.txt". The rest of the code on line 12 is not completely visible.] So basically, what these are is these look like resources and they really are. But in reality, these are just strings. So what I can do is now that I have a template with these two file resources as strings, what I can do is in my manifest now rather than, you know, specify a file resource, all is I need to do is specify the template that has a file resource. So that way, I'm really basically just importing a string into my manifest. And it has benefits because this way, if I need to make a change to the file resource, I just need to make a change once in my template. So in this video, you'll learn the basics and how Puppet evaluates templates.
+
+136786.txt:
+# template(<FILE REFERENCE>, [<ADDITIONAL FILES>, ...])
+file { '/etc/ntp.conf':
+ensure => file,
+content => template('ntp/ntp.conf.erb'),
+# Loads /etc/puppetlabs/code/environments/production/modules/ntp/templates/ntp
+}
+Basics of Using Templates
+
+[Topic title: Basics of Using Templates. The presenter is Bob Hendry.] In this video, I'm going to discuss using templates. Now once you have a template, what we do is we pass that template to a function that evaluates it and returns it as a string. Now this is not a new concept. If you're used to scripting languages, such as ASP and JSP, it kind of works like this as well, like where you might have an expression that's evaluated as a string. Now Puppet templates work exactly that same way. Now the actual template can either be a separate file or may be even a string value. Now depending on how we're going to use it, we're going to use different functions, depending on the template's language and how the template is stored.
+
+Now we have two different template languages that we're going to be using. [The 136787.txt file is open in the Notepad++ window. The visible part of code is in the transcript for reference under the heading "136787.txt".] We have Embedded Puppet, which is called EPP. And the file is called an EPP file, and the string is really an inline EPP file. Now the second language that we use for a template language is Embedded Ruby, or what's called ERB. And the file there is a template file, and the string is evaluated as an inline template.
+
+So basically, we have a template file with a template and an EPP. Now in this case, what we do is we put the template file in the templates folder or the templates directory of a specific module. So depending on the version of Puppet that you use, like if you're using version five, you would use Puppet Labs. If you're using versions before that you just would use the Puppet folder. And under there, you're going to have your module folder. And under your module folder, you're going to have all of your modules. But before you specify your module, you're going to have a templates directory. And that's where you put your template and your EPP file.
+
+Now your EPP file should have an EPP extension. And if you're using Ruby or the ERB file, you should be using an ERB extension. So basically, what you see here is you see a template file that is an ERB. And actually, this one here is an EPP file. So basically, we have two file resources and they're both going to be evaluated as strings. Now, if we want to reference these files, the first argument that we use to reference these functions or pass to these functions is module forward slash file, which will load the file from the module's template folder.
+
+So basically, if we have a file reference such as ntp/ntp.conf.epp, the actual file is going to be under the modules folder or the modules directory. Then ntp, then templates, then ntp.conf.epp. And the same with the ActiveMQ, if we have, for example, ActiveMQ, AMQ, and then under that the activemq.xml.erb file. So basically, these are all going to be loaded from the modules directory. And then the name of the actual module, then the templates folder, and then the name of either the EPP file or the ERB file.
+
+So basically, we have some parameters that we could pass into this as well. For example, EPP templates can declare parameters, and I can't provide values and pass them to as either a hash to the EPP function. And the same with extra ERB files. So, with the ERB file, if I would like, what I can do is I can use the template function and pass in a number of additional template files, and/or arguments, and concatenate them. And then basically get them returned to me as one final string. So basically, these templates are nice and flexible insofar as it allows us to kind of reuse code, even though templates really aren't code, they're kind of strings that are evaluated as code. But depending on how we use it, either as a Ruby or as a Puppet template, what we can do is we can just use that string as part of our manifest to do some coding. So in this video, you learned a little bit about templates and how we can use them to code.
+
+136787.txt:
+# epp(<FILE REFERENCE>, [<PARAMETER HASH>])
+file { '/etc/ntp.conf':
+ensure => file,
+content => epp('ntp/ntp.conf.epp', {'service_name' => 'xntpd', 'iburst_enable'
+# Loads /etc/puppetlabs/code/environments/production/modules/ntp/templates/ntp
+}
+# template (<FILE REFERENCE>, [<ADDITIONAL FILES>, ...])
+file { '/etc/ntp.conf':
+ensure => file,
+content => template('ntp/ntp.conf.erb'),
+# Loads /etc/puppetlabs/code/environments/production/modules/ntp/templates/ntp
+}
+Coding Techniques of Templating
+
+[Topic title: Coding Techniques of Templating. The presenter is Bob Hendry.] In this video, we're going to dive a little bit more into the code of a template. So we're going to be building and to be coding a template, and discussing about where it's used in your Puppet configuration.
+
+So let's take the example of a manifest that may have a file resource. [The 136788.txt file is open in the Notepad++ window. The visible part of code is present in the transcript for reference under the heading "136788.txt".] So let's just say we have a scenario, where a Puppet agent connects to a Puppet master, and that Puppet master downloads the catalog to the Puppet agent. And what that Puppet agent does is, it applies the catalog to its local configuration.
+
+Now we could do that in one of a few different ways. We can have, for example, a template, we can have a manifest, we can have a module, or we can have a combination of all of them by using classes. But let's just say, for example, we'll be coding this in a manifest. So in the manifest, we would have a file resource. The file resource would have the name of the file and some attributes that have to do with the file – such as, you know, the name of it, what the contents are, and things of that nature.
+
+So let's just say, we find ourselves doing this in multiple different places. For example, we may have a bunch of different nodes or a bunch of different Puppet agents from the same environment that are using the same file resource. So basically, we would have a duplication of effort.
+
+So in that case, let's just say, for example, we need to change the name of the file. So rather than foo, it's foo.bar, or something like that. Now, if we were not using templates, what we would have to do, is we would have to go into each of the manifest or in each line of the manifest and change exactly how that file resource would be referred to. So, you know, rather than refer to the old file, we would have to change it to refer to the new file.
+
+Now a template allows us a way to get out of that. So what we could do is, we could have something like this that you see on your screen, where we're defining a file resource – in this case two file resources. And then what we can do is, in our manifest, replace our hardcoded value of our file and refer to the template. So therefore, what we can do is, if the file name changes, all is we need to do is change the template.
+
+Now remember your template works kind of along the same way as an ASP file or a JSP file works insofar as kind of like interpoling a string as part of your script. So that's basically what the template does. So what we can do is, we could code, basically, our file resource as you see here, and then just have the file resource or the template imported into our manifest. So in this video, you learned a little bit more about Puppet templates, about coding templates, and how we would access templates in our code, specifically with configuration, in a manifest file.
+
+
+136788.txt:
+# epp(<FILE REFERENCE>, [<PARAMETER HASH>])
+file { '/etc/ntp.conf':
+ensure => file,
+content => epp('ntp/ntp.conf.epp', {'service_name' => 'xntpd', 'iburst_enable'
+# Loads /etc/puppetlabs/code/environments/production/modules/ntp/templates/ntp
+}
+# template (<FILE REFERENCE>, [<ADDITIONAL FILES>, ...])
+file { '/etc/ntp.conf':
+ensure => file,
+content => template('ntp/ntp.conf.erb'),
+# Loads /etc/puppetlabs/code/environments/production/modules/ntp/templates/ntp
+}
+EPP Templates
+
+[Topic title: EPP Templates. The presenter is Bob Hendry.] In this video, we're going to take a closer look at EPP files. And I'm going to tell you and show you how EPP files behave within templates and indeed within Puppet. Now the example that I'm going to show you is kind of an academic example, where I have a bunch of different scenarios – kind of set up for you. So we could kind of understand how templates work and how they substitute string values into, you know, other files or other expressions.
+
+Now the good news is if you're familiar with other scripting languages, such as may be JSP and ASP, it kind of works the same. Where you have the concept of like a scriptlet, an expression, and a declaration. Now it doesn't quite work like that in Puppet, but it's very, very close. The concept is really basically the same. So all is you need to do is, you need to look at the different expressions and the different tags and figure out how these expressions are evaluated and what they actually mean.
+
+So what I have here is, I got an example of a few of them here. Like for example, here we're declaring some variables, [The 136789.txt file is open in the Notepad++ window. He highlights lines of variables: <%- | Boolean $keys_enable,, String $keys_file,, Array $keys_trusted,, String $keys_requestkey,, String $keys_controlkey.] where we've got a Boolean, a String, and Array, and a String. Now if you take a look at these guys here, we have these different sorts of expressions [He highlights the <%# expressions.] and these different kinds of templates here. Like we've got the <, and then we've got the dollar sign, and then we've got the pound sign. Now all of these really determine exactly how the string and the template is going to be inserted or handled as it gets inserted into either, you know, your code, your manifest, your class, wherever you're actually using it.
+
+So I have some different expressions here, such as, you know, Non-printing tag. I have Expression-printing tag. And also, I have some sort of Boolean logic here, where we can have like an 'if statement' starting in a tag. And then ending with the closing brace, within an expression from the actual Puppet template. So you're going to constantly be putting in code expression, to kind of put your code into your manifest to get the value out of your template. So basically, it boils down to these kinds of different tags. We have these kinds of expressions here. Like for example, if you want to insert the value of a single expression, this looks very much like a Java scriptlet. And then you have here, on line 31, [He highlights <% EXPRESSION %> - Executes any expressions, but does not insert a value.] if you want to execute any expression and does not insert a value, it's going to act more like an EXPRESSION right here.
+
+So actually, here you have the EXPRESSION and here you would have something that looks like a Java scriptlet. Now, on line 32 and line 33, [He points at the commands With <%- - Trims the preceding indentation and With -%> - Trims any trailing spaces and up to one following line break.] we could kind of define exactly how we're going to be trimming. Like for example, if you want to trim the predecessing indentation, you would use the syntax in 32. If you want to trim any trailing spaces and up to one following the line link, you would use this expression here. We can pass expressions, if they're between a pipe. And that should declare a templates parameters that we're going to pass into a template. [He points at command <% | PARAMETERS | %> - Declares the template's parameters.] And also, we have on line 35 and 36, if you want to trim any proceeding indentations or if you want to trim any trailing spaces and up to one following a line break. [He points at the commands With <%- - Trims the preceding indentation and With -%> - Trims any trailing spaces and up to one following line break.]
+
+So I have here, recipes and the kinds of expressions that you would use. And also, we have here if you want to remove something from the final output. And then also, we have this expression here, if you want to trim any trailing spaces, up to and following the line break. [He highlights the command With -%> - Trims any trailing spaces and up to one following line break.] And then ditto with line 39. [He points at the command <%% or %%> - A literal <% or %>, respectively.]
+
+So basically, this is a grocery list of how strings would be handled from your template, if you're calling it externally from your template. So it's kind of just like learning these new tags. There's only really a handful. And like I mentioned before, if you're used to using languages such as ASP or JSP, using templates and taking the strings that are in the templates and putting them in their code is fairly straightforward. So in this video, you learned how to use EPP files and how to understand the expressions.
+Using File Functions
+
+[Topic title: Using File Functions. The presenter is Bob Hendry.] In this video, we're going to talk about file functions and file attributes. Now, if you want to work with files within Puppet, there's a variety of ways of doing so. The real way that you want to do it though is by using a file resource. By using a file resource, it allows us to manage directories, files, and also attributes that go with files such as permissions. So, basically, by using the file resource, it allows us to manage files including content, the ownership, and then the permissions of the files. And again this is going to work either on Linux-based or Windows-based machines.
+
+Now the file type can manage what are called normal files, which are, basically, like, ASCII text files. We can do things such as create or remove folders and also send links. Now there are different required attributes for files. And we're going to, kind of, go over a few of them right here. Now file contents can be managed directly with the content attribute, which is going to be required in most cases. [The 136790.txt file is open in the Notepad++ window.] Or what we can do is we could download the remote source using the source attribute. What that will do is it will get the file from a specific source, possibly a URL. Now the latter can also be used to recursively serve directories. So, if we want to, what we can do is we can use recursion to serve folders or to get files from recursive folders over the net.
+
+Now remember on Windows that file contents are managed in a binary mode, which is a little bit different than what we would do in a Linux machine. And Puppet never automatically translates any kind of line endings or any kind of control characters such as carriage controls and line feed. So I'm going to go over just a couple of the specific and the required attributes for files here. [Some of the attributes in the list are ensure, backup, content, and recurse.] First of all, we have the name. And we have the path. Now namevar should be required. But, if it is omitted, the attributes failure defaults to the resource title. Now this is going to be part of the path. Now the path is the path in which we're going to use to manage the file. And it must be fully qualified. Now remember, pathing is different in Windows and in Linux machines.
+
+So, in Windows, the path should include the drive letter and should use the forward slash as the separator rather than double back slashes that you would use on other systems such as Linux and UNIX. Also the ensure property should be used as well. Now this is going to determine whether the file should exist or not exist. And if it does exist, what kind of file it should be. Now possible values are absent, file directory, link, and present. And they are all obvious on what they represent. But present, basically, accepts any form of file existence and will create an ASCII text file if the file is not there. Now the file won't have any content unless we specify the content or the source attribute.
+
+Now, if it's absent, this ensures that the file doesn't exist. And deletes it if it's actually there. So what we can do is we could use absent to delete a file if we don't want it in a specific folder. Now, if we specify file, this ensures that it is a text file or an ASCII file. And enables the use of either content or source, which allows us to put any kind of content or text within the file if it's an ASCII file. Now directory will make sure that it is not a file, but indeed is a directory. And it will enable the use of other attributes such as source, recurselimit, ignore, recurse, and purge.
+
+Now, if we want to use a symlink, we will use the link attribute. And this also will require that we get a target attribute. Now symlinks are supported on POSIX systems and also on older versions of Windows such as Vista and 2008 and higher. Now, if we're using windows and if we're managing symlinks, we're going to have to use the Puppet agents user account and have the create symbolic links privilege. So we're going to have to have elevated privileges for that actually to work. We can do this in user rights and we can use this and configure this in the Windows Policy Editor if you're familiar with using that.
+
+Now, if you're familiar with using the policy editor, you can do things such as create users that do only things such as doing things with symlinks. Now also it's important to point out that Puppet will avoid getting rid of folders unless we have the force attribute set to true, which means that if a file is currently in a directory, setting assured anything but directory or possibly present will make Puppet skip managing the resource or deleting the folder after it deletes the actual file. This will either log an error or possibly even a warning.
+
+Also it's important to point out there's also one standard value for ensure. If we specify the path to another file as the ensure value, it's, just, basically the equivalent of specifying a link to that file and using that path as a target. So, in this video, you learned how to use files and used how to use the file resource within Puppet.
+Delivering Files with Puppet
+
+[Topic title: Delivering Files with Puppet. The presenter is Bob Hendry.] In this video, we're going to talk about delivering files with Puppet. Now, basically, when we talk about files and file management within Puppet, we really don't talk about delivering files as much as we talk about your creating files or may be getting a file from a source and moving it to a destination. So file management is very important in Puppet.
+
+So let's talk about a little bit about how this really works. Again we have a Puppet master and a Puppet agent. Now the Puppet master, what its job is to do is to deliver the catalog to the agent and have the agent perform a configuration on itself, basically, based on the catalog. Now remember what Puppet does. Puppet, basically, explains or defines what the system state should be or what the configuration state should be. So Puppet looks at what the configuration state is and then changes it to what it should be using the declarative, you know, Puppet syntax that we're probably used to using by now. So we're going to cover a little bit more in depth about how files actually work within Puppet. [The 136791.txt file is open in the Notepad++ window. The complete code is in the transcript for reference at the heading "136791.txt".]
+
+Let's take the following scenario. Let's just say we have a client, we have a Puppet agent that was spinning up. It's a virtual server – it's a Linux box. And when we spin up this Linux box, we want it to have a few things. For example, you want it to have apt-update, we want it to have Apache2, we want it to have SQL Server, and we want it to have some configuration to make this all work.
+
+Now think about how you would do this manually. Now manually what you would do is you would, you know, before Puppet is you would log onto this machine and then you would do all these configuration steps. First you would download all these tools, you would install all these tools, and then, you know, you would configure all these tools. Now, when you're configuring all these tools, you're probably creating files. You're probably creating HTML files, you're creating JSP files, perhaps .property files, XML, JSON, YAML, you get the picture.
+
+So, in this case, what we need to do is if we're doing automatic configuration with Puppet, we need to be able to at least understand how this file management works and how we can handle this file management between a Puppet master and a Puppet agent. Now really things go one way. They are going to go really from, you know, the Puppet master serving the catalog to the agent. And the agent doing the configuration. So, in this scenario, I'm going to show you a manifest and some Puppet code that's going to do some installs and do some basic file management.
+
+For example, here on the overhead we got an example of a manifest that's going to first on line 2. It's going to make sure that we have the 'apt-update'. We're going to execute it. And then we're going to take a look at line 7 where we're going to install the 'apache2' package. So, basically, get Apache2 up and going. It's going to require that we execute 'apt-update' to do this. And we ensure that it's installed.
+
+After that we need to make sure that Apache's running. So we're going to have a service resource. And the service resource is going to be ensure that it's running. And then we have another package resource on line number 18. And we require that 'apt-update' is running and we ensure that it's installed. So, at this point, we have 'apache2' installed and running. And 'mysql-server' installed and now it's going to be running on line 23 where we have a service resource and we ensure that that's running as well. We're going to install php5 on line number 29 and ensure that's running as well.
+
+So this leads us to what I'm going to be talking about here in a little bit. We're going to be talking about file resources as we see right here on line number 35. Now, when we install things such as Apache or MySQL Server or any of these other different packages, we're going to need to have, in many cases, some configuration files. Now, in this case, we're going to be creating a file resource called, on line 35, '/var/www/html/info.php'. Now this is going to be, kind of like, your index that HTML file or your home.jsp. Basically, when someone hits your web server root folder, this is what's going to be served.
+
+So we're going to be doing it as a PHP file, but it doesn't have to be. I mean we could put it in a different folder if we were doing it in JSP or in HTML. But, in this case, this example uses PHP. So, basically, what's going to happen is when the Puppet agent is going to run this manifest to perform the configuration on the service itself or on the agent itself, what's going to happen is this file is going to be created. So we see ensure if equal file or ensure file which says it's a file and not a folder. We have the content. Now the content is going to be the text that is in there. Now this is going to be a text file, or what Puppet calls a normal file. So a normal file is just a text file that we can write to.
+
+So, basically, what we're going to do, is on line 37 is we're going to add the content. And the content simply is a php tag. And we have our open tag and our close tag really all in the same line there. Actually it's not a close tag, it's not really required for PHP. And also on line 38, we have require => Package['apache2'], which means that we can't actually build this file unless Apache2 is actually installed.
+
+So this is a real simple way that we're not really transferring a file from the master to the agent, but we're, basically, telling the agent that this file needs to exist. And if this file doesn't exist, create it. And please make sure that you create it with the content that you see on line 37. So, in this video, you learned how Puppet uses the file resource to transfer or to create files on a Puppet agent.
+
+136791.txt:
+# execute 'apt-get update'
+exec { 'apt-update': # exec resource named 'apt-update'
+command => '/usr/bin/apt-get update' # command this resource will run
+}
+#install apache2 package
+package { 'apache2': require => Exec['apt-update'], # require 'apt-update' before installing
+ensure => installed,
+}
+# ensure apache2 service is running
+service { 'apache2':
+ensure => running,
+}
+# install mysql-server package
+package { 'mysql-server':
+require => Exec['apt-update'], # require 'apt-update' before installing
+ensure => installed,
+}
+# ensure mysql service is running
+service { 'mysql':
+ensure => running,
+}
+# install php5 package
+package { 'php5':
+require => Exec['apt-update'], # require 'apt-update' before installing
+ensure => installed,
+}
+# ensure info.php file exists
+file { '/var/www/html/info.php':
+ensure => file,
+content => '<?php phpinfo() ; ?>', # phpinfo code
+require => Package['apache2'], # require 'apache2' package before creating
+}
+Advanced File Functionality with Puppet
+
+[Topic title: Advanced File Functionality with Puppet. The presenter is Bob Hendry.] In this video, we're going to talk a little bit more about some advanced file usage within Puppet. Now, when you talk about or you mention advanced file users in Puppet, it's really, kind of, what do you want to do with the files. It isn't like there's a section, you know, of the Puppet documentation that says, this is how you use advanced files. But, basically, what it refers to is when you want to use like out of the box file functionality, how would that work?
+
+Now there are a few things that come to mind. First of all, as far as file functionality goes with a file resource, [The 136792.txt file is open in the Notepad++ window. The complete code is in the transcript for reference under the heading "136792.txt".] you can pretty much do anything you like insofar as creating or deleting a file on a Puppet agent with any extension, you know, HTML, .rb, .properties. You get to define exactly how you're going to build a file on the Puppet agent.
+
+And you do so by putting together on manifest and the Puppet manager that refers to the file resource. And, basically, tells you how that's going to be configured. You know, ensure it's there. You can do things such as, you know, download files from different directories, you can go through recursive directories and load files that way. And then on your agent you could just do the installation. So that's kind of like advanced file management or at least intermediate file management. You're not just necessarily looking to see if a file exists. And if it doesn't, create it.
+
+But there are some other things that you can't do like, for example, there are limited ways that you can transfer like a file or the contents of a file from an agent to a master. And then some limited ways that you could do that from a master to an agent. But it's a little bit easier if you need to transfer a file from an agent to a master.
+
+Now it's important to point out and to understand the process of communication between an agent and a master where we're really not transferring anything but a few things. For example, when an agent connects to a master, what happens is it, basically, among other things uploads things about the agent called the facts.
+
+So facts actually get uploaded and pushed into the master. So what we can do is we can use Facter if we would like. We could use Facter to create maybe our own custom fact. And based on that custom fact is we can give it a value. Now that value could be anything that we would like it to be. It could be the contents of a file if we want it to. So what we can do is we can create a fact. And then, basically, take the contents of a file that exists on the agent and set the value of the fact to that value. And then when the agent pushes that fact up to the master that master will read the fact.
+
+So, basically, they are reading the fact, it's effectively reading the file. Now it's not really reading the file, but it's really reading the contents of the file as the agent put it in there. Now there's really not a lot of communication that could go back to the agent regarding this because the master is just going to download the catalog and push the catalog to the agent. So I guess in that aspect what we can do is we could put together some stuff in a manifest that would actually push some content down to the agent. But the agent would have to know that, that is going to be the contents of a file and perform some sort of action.
+
+What I have here is a code example that does something similar to that where we have a Ruby file called master_hash. And what this is doing is it's going to be a JSON function that's going to add something to Facter. So, basically, what's going to do, it's going to add a fact. And what the fact is going to do or going to contain is it's going to contain the contents of a file.
+
+So, basically, on line 3, what I'm doing is I am the agent, that's where this will exist, is I am the agent is I'm adding a fact. [The code is Facter.add(:master_hash) do.] And then what I'm doing is I'm reading the file. I have the path to some JSON file. And then I'm reading it. On line 7, what I'm doing is I'm saying, master_hash = JSON.parse(f). And I'm passing it the file.
+
+So, basically, what I'm doing is I'm taking a JSON file on the agent. I'm building a fact on the agent. And setting that fact equal to the contents of the JSON file. Now, when the agent connects to the master, it's going to transfer this as a fact. So I can have code on the Puppet master that will read this fact and presumably do something important on it. So in this video, you learned a little bit about advanced file management within Puppet.
+
+136792.txt:
+# module_name/lib/facter/master_hash.rb
+require 'json'
+Facter.add(:master_hash) do
+setcode do
+#return content of foo as a string
+f = File.read('/path/to/some_file.json')
+master_hash = JSON.parse(f)
+master_hash
+end
+end
+Exercise: Use Puppet Files and Environments
+
+[Topic title: Exercise: Use Puppet Files and Environments. The presenter is Bob Hendry.] In this exercise, you will set the Puppet client environment, use a Puppet template, use a Puppet file function, and configure a Puppet agent using Puppet file functionality and environment. Now pause the video and come up with your solution. After you come up with your solution, resume the video, and compare your solution to what I came up with. [The Terminal window opens.] Hello and welcome back. Did you come up with your solution? Let's compare your solution to what I came up with. Now there's more than one way to do this. So I'm just going to, kind of, generally go through the steps.
+
+The first step is to configure an environment for the Puppet agent. So now I'm logged in to a Linux agent and we're going to do just that. I'm going to go in and set the environment. [He executes the cd etc and ls commands.] Now, to do that, we go to our root folder. And then we go to our root puppet folder. [He executes the cd puppet and ls commands.] And, in our root puppet folder, we find a file called puppet.conf. So let me sudo my way in there. So it'll be sudo nano and the name of the file, which is puppet.conf. Now here we can set the environment. So I got the environment set to testing. And we'll leave it as that for now. We can have it as anything. We didn't specify what we call it. So therefore, this is just fine.
+
+Now let me go into my Puppet master. So let me log into my Puppet master, which you see just here. They look kind of the same but I went from one screen to the next. And here what I'm going to do is I'm going to specify a template. Now leave it to you to actually plug the template in. [The 136788.txt file is open in Notepad++ window.] What I'm going to do is I'm just going to, kind of, go over the steps in building one.
+
+So we need to navigate to our templates folder. Now templates is under Puppet, it's at the same level as our modules. So I have Puppet and I have templates. [He switches to the Terminal window.] So here I'm specifying two files templates. And I'll leave it to you to plug that into your manifest because I don't know what configuration you're using. But that's where you would put the template. And then you would refer to the template in any manifest or module or class code you might have.
+
+Now the next step, let me go into modules. [He executes the cd modules and ls commands.] And let me configure a file resource for a specific agent. [He executes the cd lampserver and ls commands.] So I do have a module here called lampserver, which I know is used for a Linux box that I use as an agent. [He executes the cd manifests and ls commands.] So here I'm going to go into manifest. And I'm going to go into init.pp. And this is the manifest that is applied to a specific Puppet agent that I'm going to configure.
+
+So let me sudo nano my way into init.pp. [He executes the sudo nano init.pp command.] And I can add a file resource. But I already have one. So I'm just going to leave this one here. [He points at the code, code starts: file { '/var/www/html/info.php':, ensure => file,, content => '<?php phpinfo(); ?>',, require => Package open square bracket 'apache2' close square bracket,,}. Code ends.] Now you can add one. You can use an existing one, it really doesn't matter. I just wanted you to use a file resource, and there it is. So I have a template and I have a file resource. And I didn't connect them yet. But I'll leave it up to you to do so because your code is going to be different than mine.
+
+So let me shift again back to my Puppet agent. And you can see my prompt changed to linuxagent. And then let me clear my screen and then do a configuration. So let me type in sudo and then puppet agent --test. And what this will do is it'll transfer my facts to the master. And then the master will download the catalog. And hopefully if everything goes right, we won't get an error message. So let's give this a shot. Let's hit Enter. [He executes the sudo puppet agent --test command.] And it looks like it works just fine. Congratulations, you're well on your way to becoming your own Puppet master.

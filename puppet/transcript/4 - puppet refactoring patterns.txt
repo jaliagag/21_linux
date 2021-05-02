@@ -1,0 +1,307 @@
+
+Puppet Refactoring Patterns
+
+There are different ways to refactor Puppet configurations. Explore techniques to mitigate the risk and increase the success of Puppet configuration refactoring as it relates to the Puppet master and the Puppet agent.
+
+Table of Contents
+
+    The Include Function
+    The Defined Function
+    Designing Custom Functions
+    Creating a New Function
+    Testing the REST API with Curl
+    REST API Security
+    Puppet File Server
+    Extending Facter
+    Directory Locations
+    Creating Ruby Defined Facts
+    Usage with Modules
+    Roles and Profiles
+    Exercise: Refactor Puppet Configuration
+
+The Include Function
+
+[Topic title: The Include Function. The presenter is Bob Hendry.] In this video, we're going to talk about the Puppet include function. Now Puppet supports functions just like any other programming language such as, you know, Java or C#. The base development language of Puppet is Ruby. So to do any kind of functions in Puppet, it's helpful to know some Ruby. At least a little bit of Ruby. Now there are two different types of functions that are supported. They're called statement functions and rvalue functions. Now statement functions kind of stand on their own and they don't have a return type. So they're kind of like procedures. Now you use them for performing like a standalone task, like importing other Puppet modules or any kind of manifest programming.
+
+Now, on the other hand, we have rvalue functions. Then they return values. And you could only use an rvalue function when a statement requires a value such as if you're assigning something in an if...else statement, a case statement or some kind of looping structure. Now, one of the thing that you have to know about how functions execute in Puppet is functions only execute on the Puppet master and they don't ever really execute on the client or the Puppet agent, although it might appear that they do so. So they only have access to commands and data that are on the Puppet master or can be accessed by the Puppet master. Now there are different kinds of functions that are already in core Puppet.
+
+Now, generally, you don't need to have permissions to run any of the core Puppet functions, but if you create custom functions, you're probably are going to have to have some kind of elevated privileges to do so. So, here I'm going to talk about the include function. Now the include function is very similar to the include function or statement in any other programming language. [The Notepad++ window opens. The 136794.txt tabbed file is open. The complete code is given at the end of the transcript under the heading Code 1.] Basically, what it's used for is it's used for the declaration of one or more classes and results in evaluating all the resources present inside those classes, and then adds them to the catalog. So, basically, this is the way it works.
+
+The include function accepts a class name, a list of classes or a comma-separated list of class names. Now, one thing that you have to keep in mind while you're using an include statement is you can use it multiple times within a class, but it has a limitation of including a single class once and only once. So, if the included class accepts a parameter or multiple parameters, the include function has to automatically look up the values for them using the syntax of class name colon colon parameter name as a specific look up key. Now, if you use the include function, it does not cause a class to be contained in a class when it's declared.
+
+Basically, meaning that if you need to use the contained function, the include function will work just fine. It doesn't even create a dependency in the declared class or any kind of dependency in any of the classes surrounding it. So, if you're going to use an include function, make sure that you use the full name of a class because that's the only way that you can declare it. Relative names are not allowed when using the include function. So, in this video, you learned a little bit about Puppet functions and how to use the include function.
+
+Code 1:
+class { 'apache':
+default_vhost => false,
+default_mods => false,
+mpm_module => 'prefork',
+}
+include apache::mod::php
+apache::vhost { 'example.com':
+port => '80',
+docroot => '/var/www/html',
+}
+The Defined Function
+
+[Topic title: The Defined Function. The presenter is Bob Hendry.] Here let's go over the Puppet defined function. Now in Puppet, the defined function helps us developers determine where a given class or resource type is defined. It can return a Boolean value or not a value at all.
+
+Now, we can also use the defined function to determine if a specific resource is defined or the variable defined has a value. Now, we have to keep in mind that when we're using the defined function, this function takes at least one string argument. And this string argument is going to either be the class name, the type name, it could be the resource reference or the variable reference in the form $name. Now again, it could be either the name, the type name, the resource, the reference, or variable reference.
+
+Now the defined function is going to check for both native and defined function types. Also, it's going to look for types provided by any kind of module that you might have. Now, type and class are going to be matched by their names, and the defined function will also match the resource deceleration by using the resource reference.
+
+Here we have an example of the defined function matches. [The Notepad++ window opens. The 136795.txt tabbed file is open.] So the first one is going to match by resource type, the second is matching defines and classes, the third example is matching variables, and the fourth example is matching declared resources.
+
+[The complete code is given at the end of the transcript under the heading Code 1.] So in this video you learned about the defined function and how Puppet uses the defined function in matching.
+
+Code 1:
+# Matching resource types
+defined("file")
+defined("customtype")
+# Matching defines and classes
+defined("testing")
+defined("testing::java")
+# Matching variables
+defined('$name')
+# Matching declared resources
+defined(File['/tmp/file'])
+Designing Custom Functions
+
+[Topic title: Designing Custom Functions. The presenter is Bob Hendry.] Now, you probably already know that Puppet has a bunch of built-in functions that you can use. Now Puppet also allows you to create your own functions. So, in this video, I'm going to talk about design considerations of how to build a Puppet function. Now, basically, building a function in Puppet doesn't really change as much as building a function in any other language. A function basically does something. It takes a parameter list and it returns a value. [The Notepad++ window opens. The new 1 tabbed file is open. The complete code is given at the end of the transcript under the heading Code 1.] Just like a function does in Java or C# or Visual Basic, it basically does the same thing.
+
+So we're going to talk about some design considerations of using functions. Now functions are useful in Puppet when you want to do some sort of custom action. Like, for example, we may have some conditional action that we may want to look at a specific node and what it has configured on it. For example, let's just say that we have a Puppet agent connect to a Puppet master. And what it does is it gives the Puppet master all of the facts. What we can do, is we can take those facts and pass them to functions and determine configuration options.
+
+Let's just say we have the following scenario, where we have an agent and the agent may have one or two or three, or perhaps even more HTTP servers installed. Such as Apache or what have you. What we can do, is we could build a function that will take that list of facts, perhaps, and then based on that list of facts, we could perform some sort of configuration. So, rather than having, you know, without a function, you know, we would get the facts with the Puppet agent and then, you know, during one of manifest code as we could put in, you know, how that agent's going to be configured. We could have a function determine that for us. Basically by, you know, putting in either conditional logic with an if statement, or perhaps a looping logic structure or like a For...Next or anything.
+
+So we can write procedural logic with Puppet code. Usually, you're used to just writing like manifests and classes and modules that don't really have procedural logic, but we can write procedural logic within Puppet functions to do something useful. Another example might be writing string functions, where we may have, you know, a large string that we may want to parse out or look for a string within a string. For example, we may have a custom fact that's been uploaded by an agent and, you know, we don't want to look at the entire fact. It's not like that we would compare, you know, the value of the fact, but what we might want to do is look to see if there's a string within it. So, maybe perform some substream functions to look for, you know, maybe user permissions, or maybe the contents of a file or what have you.
+
+So, basically, the rules in creating a custom function and Puppet aren't really any different than the rules of creating a custom function in any other language. You just have to get used to the syntax and you have to get used to exactly, you know, how you call the function, how you compile it, and how you register it with Puppet itself.
+
+So, in this video, you learned about Puppet functions and you learned about the design considerations for building your own Puppet function.
+
+Code 1:
+function <MODULE NAME>::<NAME>(<PARAMETER LIST>) {
+… body of function …
+final expression, which will be the returned value of the function
+}
+Creating a New Function
+
+[Topic title: Creating a New Function. The presenter is Bob Hendry.] So let's create a new function. Here, I have this syntax and an example for a function. So the general form for a function written in Puppet is the following. First, we start with the keyword function, then we have the namespace of the function. And this should match the name of the module, the functions contained in. But it doesn't always have to be the case. [The Notepad++ window opens. The 136797.txt file is open. The complete code is given at the end of the transcript under the heading Code 1.] Then we have the namespace separator, that's a double colon. And then we have the name of the function.
+
+Now, after that we have an optional parameter list. Now, this is going to start with opening parenthesis and then a comma separator list of the parameter. For example, you know, string my value equals and then whatever value. Now, each parameter is going to consist of an optional data type. And this is going to restrict the allowed values for the parameter. Now, the default is any. So, if you don't put the data type in there, it's going to default to any. Then we have the variable name.
+
+Now, this is going to represent the parameter. And you have to start it with a dollar sign prefix. Then you have an optional equal sign and a default value. Now, the default value is what you're going to set it as if you don't get a parameter that's going to be passed in there. After that, you're going to have a trailing optional comma for the last parameter and then finally a closing parenthesis. That is part of the function. You're going to have an opening curly brace, which is going to start your function block.
+
+And then the main part of your function is going to be a block of Puppet code. Now, this is going to end with an expression, and this expression's value is going to be returned. So this is going to be the return value of the function. And then finally, you're going to have a closing curly brace.
+
+Now, as far as parameters go, functions are passed to arguments by a parameter position. That means that the order of the parameters is going to be very important. And the parameter names don't necessarily or will not be affected in the order that they're passed. So you can pass in the values and not specify the name of the parameters. Now, you also have the thing where you have optional and mandatory parameters.
+
+So if a parameter has a default value, then it's kind of optional to pass a value for when the function is going to be called. Now, if the caller doesn't pass an argument for a specific parameter, then the function will use the default value if it's already specified. Now, since parameters are passed by position, if you have an optional parameter in your function or it has to be listed after all the required parameters. If you have a required parameter after you have an optional one, you're going have an evaluation error.
+
+So, basically, these are the rules for creating a function within Puppet. So, in this video, you have learned how to used functions and you have learned the syntax on how to write a Puppet function.
+
+Code 1:
+function apache::bool2http($arg) {
+case $arg {
+false, undef, /(?i:false)/ : { 'Off' }
+true, /(?i:true)/ : { 'On' }
+default : { "$arg" }
+}
+}
+Testing the REST API with Curl
+
+[Topic title: Testing the REST API with Curl. The presenter is Bob Hendry.] The Puppet master and the Puppet agent uses the REST API for communication. In this video, I'm going to go over some useful curl commands and specifically talk about the puppet master API REST reference. [The Notepad++ window opens. The 136798.txt tabbed file is open.] Now I don't want to give you an exhaustive list of this because it'll probably be too big and beyond the scope of this video, but we can get started with some useful curl commands.
+
+So, basically, our curl commands are broken down into different categories. We have catalogs, we have certificates, we have reports, we have nodes, and then we have testing. And you could see some of the curl commands we have for each one of those catalogs here on each one of those curl commands with the last one not really being testing but just kind of mentioned as status right here in the code example.
+
+So let's go over these one by one. So, to get a catalog from the Puppet master, we have the curl command where we're passing an Accept and pson. Now don't really worry about these URLs here. These URLs are really just meant for kind of placeholders here. If we want to do anything with certificates, like, for example, on line number 8, we're doing a Certificate Revocation List. We have the GET in there as well. [The command is GET /certificate_revocation_list/ca.] And you see the curl command on line number 10. We're passing a curl, a k and an H and we're passing an Accept and s as a flag. [The command is curl –k –H "Accept: s" https://brcleprod001:8140/production/certificate/ca.] Now for the converse of that, we have a line number 12 where we're requesting a certificate.
+
+So we have two GETs here. We're going to request a certificate request for anything. [The command is GET /{environment}/certificate_requests/{anything}.] And then the second one, on line number 14 is we're going to have a GET for the certificate_request and for a node certificate name. [The command is GET /{environment}/certificate_request/{node certificate name}.] And you see those curl commands listed on line 15 and 16. With the first one, what we're doing is we're getting really anything for the certificate request. [The command is curl –k –H "Accept: yaml" https://brcelprod001:8140/production/certificate_requests/all, curl –k –H "Accept: yaml" https://brcleprod001:8140/production/certificate_request/puppetclient.] And on line 14, we're doing the certificate_request and then we have a node certificate name as we could see on the right-hand side after certificate_request, we see the Puppet.
+
+Now, on line number 18, we're going to have Reports and Submit a Report. So, basically, this is going to be a PUT. So we have a PUT and then we have the environment, the report, and then the node certificate name. [The command is PUT /{environment}/report/{node certificate name}.] And we see that on line number 20, where we have the curl command, we're doing the Content-Type. And if you scroll over to the right, we can see the additional parameters that we're passing into the URL. [The command is curl –k –X PUT –H "Content-Type: text/yaml" –d "{key:value}" https://brcleprod002:8139/production.] So we're passing, in this case, the production node. So that leaves us just to some node code and some status code.
+
+So for the Node, on line number 22, this is what we can issue as far as a curl command to get facts regarding a specific node. [The command is GET /{environment}/node/{node certificate name}.] So on line 24, here's our curl request. [The command is curl –k –H "Accept: yaml" https://brcleprod002:8140/production/node/puppetclient.] So we're passing in an Accept and then we're passing in a yaml file, where the yaml file is going to be the configuration and then we have the URL.
+
+And last, we have the GET on line number 27, which we can request the status. [The command is GET /{environment}/status/{anything}.] And the curl command there is, curl, we pass in the flags – a k and an H – Accept : pson and then the URL. So there's many more to go and there's also some more that you can look up for the Puppet agent but this should get you started with some useful curl commands if you're interested in looking more into how the Puppet master and the Puppet agent uses the RESTful API for communication.
+
+So, in this video, you learned some useful curl commands to use on the Puppet master to learn more about the RESTful API interface.
+REST API Security
+
+[Topic title: REST API Security. The presenter is Bob Hendry.] Now Puppet uses a RESTful API and, RESTful APIs as the communication channel between the Puppet master and all of its Puppet agents. So, basically, what you have here is you have the following URL for this RESTful API as shown here. [The Notepad++ window opens. The 136799.txt tabbed file opens. The url is https://brcleprod002:8140/production/catalog/brcleprod001.] Now what we're going to cover here in this video is we're going to talk a little bit about the REST API security. And it's not going to be an exhaustive list about how the Puppet master and the Puppet agent take care of security but we should be able to cover some of the basics.
+
+Now Puppet usually takes care of all the security in SSL certificate management for us. We don't usually have to do much but if you want to use a RESTful API outside of the cluster, you're going to need to know how to manage your certificate, especially if you're trying to connect to a machine. The security policy for Puppet can be configured through the auth config file, if you know how to do that. Now, to test the REST API, we can use the curl utility to use as the basic utility for the RESTful API connectivity between the Puppet and the master. But we're going to have to get the certificate.
+
+So, the first code example I have, is I have a curl code example of how you can retrieve the catalog of a node using the REST API. And basically, what we're doing is we have curl and then the cert, and then the folder is /etc/puppet/ssl/certs/ and I have the PEM key and then the file /etc/puppet/ssl/private_keys/ and then the PEM file.
+
+[The command is curl --cert /etc/puppet/ssl/certs/brcleprod001.pem --key.] Now, in the next set of commands, what I'm doing is I'm just setting the SSL certificate, which is going to be different depending on where the SSL directory is because the folder might be in a different spot, and also the node being used – the name of the node being used. So just for placeholders here, I'm using a node name but just remember that you're going to kind of put in your node name where I have something a little bit different.
+
+So let's look at the following command. What I'm doing here is I'm issuing a curl command: --insecure -H 'Accept: yaml'. And then I'm putting in my URL and you would put in your own node name there. [The command is curl --insecure –H 'Accept: yaml' https://brcleprod002:8140/production/catalog/brcleprod001.] Now in the command, what I'm doing is I'm sending a header specifying the format or the formats that we want back and the RESTful URLs, and they're going to be generating a catalog for that specific URL which is brcleprod001 in the production environment. Now that code would generate something like the following below it, where we have the aliases, applying: false, and then the classes.
+
+[The command is aliases: {}, applying: false, classes: open square bracket close square bracket.] So in another example, if I want to get the certificate authority certificate back from the Puppet master, I don't require to be authenticated with its own signed SSL certificate, since that's something that's required before it's even authenticated, so I don't have to worry about that. So, basically, my curl command would be curl --insecure -H 'Accept: s', and then the URL. [The command is curl --insecure –H 'Accept: s' https://brcleprod001:8140/production/certificate/ca.] And then you see the begin certificate there. So anyway, also there's another way to do it as well. I have two different curl commands, both curl accept where I'm passing in or I'm getting the certificate authority and then the URL.
+
+[The command is curl –k –H "Accept: s" https://brcelprod001:8140/production/certificate/ca, curl –k –H "Accept: s" https://brcleprod002:8139/production/certificate/brcleprod002.] So in this video, you learned a little bit about how the Puppet master and the Puppet agent handle security between both of them. More specifically, how we can use curl commands to do things such as certificate management.
+Puppet File Server
+
+[Topic title: Puppet File Server. The presenter is Bob Hendry.] In this video, we're going to talk about how Puppet can act as a file server between the Puppet master and the Puppet agent. So, basically, it does allow some file transfer, kind of in a client server model. What I am doing right now is I am logged into the Puppet master and I'm going to show you how the Puppet master configures a file server.
+
+[The Terminal window opens.] So I'm going to go to the root folder, Puppet and then in Puppet you're going to see a configuration file. So let me do a quick list file, and let me go into fileserver.conf. [He executes the command cd puppet. Then he executes the command ls –l.] What this does is this will configure the Puppet master's file server capabilities. Now we have some rudimentary file server, like FTP access between two machines, between a Puppet master and a Puppet agent. So let's take a look at the configuration file. Let me sudo in. So I'll do a sudo nano fileserver.conf. Now, if you take a look at the configuration it's actually fairly simple. So let me open up the file and we can take a look at it in a text editor.
+
+Now most of it is commented out, as a matter of fact the only thing that's not commented out is the path. And this is where the files are going to be transferred when we transfer files between a client and a server. Also we have here all the domains where we're allowing file transfers from, [He executes the sudo nano fileserver.conf command. The fileserver.conf file opens in the second Terminal window.] in this case we have *.example.com. But it's commented out, which basically means that it could really be from anywhere. And then we also have deny. These are the URLs, which we will block from actually doing any other file server techniques or actually taking a file and transferring it between a Puppet master and a Puppet agent. And since it's commented out, basically, we're not really blacklisting anybody. So with the allow commented out and the deny commented out, we're basically allowing file transfer between anything over the Internet.
+
+Now obviously when we configure this in real life we may want to go revisit this and change our whitelist and our blacklist. And we also have the same with plugins, we have our allow, our deny and our allow. So this is the configuration file for our Puppet master insofar as file transfer. Let's talk a little bit more about this code snippet and the configuration file.
+
+Now let's take a look at the three options that are represented here. [The commands are given at the end of the transcript under the heading Command 1.] The module name somewhat goes in the brackets on the very top, and the only thing that's really required is the path. Now the default security option is to deny all the access so if no allow lines are specified the module, which will be configured, will be available to everybody. So since it's commented out we will allow access to everyone. Now the path here can contain any of the, you know, of the domain, the hostname or the fully qualified hostnames. All of this is going to be taken from the clients SSL certificate. So when the agent connects that information's going to come from its SSL certificate.
+
+So we have to be careful that we don't mismatch the hostname and the certificate name. Now this is going to be pretty useful if we're writing or creating modules where the files of each of the client are kept separately. For example, we can have the private host case. Now as far as security goes there are two basic concepts of securing files on the Puppet file server.
+
+Now one of this is achieved by allowing access to specific files and denying access to the ones that are not required or should not be touched. Now by default, Puppet does not allow access to really anything, it needs to be defined explicitly.
+
+So the format can be used in the files to allow or deny access either by using IP address, the name or you can use a global allow. Now the client isn't connected directly to the Puppet file server using reverse proxy, then the file server will see all the connections that's coming from the proxy server and not really from a Puppet client. In those cases, if you restrict a hostname on the base of the hostname, that's usually your best practice. Now one point you really have to keep in mind and keep note of is while you're defining the file structure is, you know, if you want to deny all the statements, all the statements are passed before the allow statements.
+
+So, basically, you should have the deny before the allow. So, if you have any deny statements that matches a host then the host will be denied and no other statement is written in the upcoming files. So if you deny something before you allow it, it will be denied and it will not be allowed. So remember that, because the host will always be denied if it's denied before it's allowed. Now this is pretty helpful if you want to set a priority of any particular site. So, if you want to set your blacklists before your whitelist you would do the deny before any other statement that you would have in your configuration file.
+
+In this video, you learned the functionality of the Puppet file server.
+
+Command 1:
+[files]
+path /etc/puppet/files
+# allow *.example.com
+# deny *.evil.example.com
+# allow 192.168.0.0/24
+
+[plugins]
+# allow *.example.com
+# deny *.evil.example.com
+#allow 192/168.0.0/24
+Extending Facter
+
+[Topic title: Extending Facter. The presenter is Bob Hendry.] In this video, we are going to extend facter. Now basically what facter does, is facter is a utility that gets and sets global variables or facts about a Puppet agent. Now we have core Puppet facts, we could also extend them with our own.
+
+[The Terminal window opens.] What I just did is I listed the facter command or just executed the facter command. And this shows all the facts that I currently have on this specific Puppet agent. Now, if I wanted to look at a specific fact, I just would specify it. So here I'm going to type in facter fqdn for the fully qualified domain name. So that'll get me the value for my fact.
+
+[He executes the command facter uptime.] Now these are all the core Puppet facts. We can extend facter to basically build our own custom facts. For example, if we wanted a fact that doesn't exist as a core Puppet fact, and send it to the Puppet master before we get our catalog, we could do so.
+
+To do that, we issue the following command on the Puppet Agent. So I'm going to type in, export FACTER_ and then the name of my custom fact that I want to create. Now it has to be FACTER_ because this is going to specify that this is going to be a custom fact.
+
+[He executes the command export FACTER_favorite_band="Beatles".] So I just created a custom fact called favorite_band and I set it equal to the Beatles. Now I'm going to create another custom fact which I'm going to call favorite_team. So the favorite_team is going to be equal to the Chicago Bulls and you can put in your team here as well.
+
+[He executes the command export FACTER_favorite_team="Bulls".] So basically here I created two facts. Now I could use these facts just like a core fact. I could list it, for example, let me type in facter favorite_band and I should get the Beatles. And then favorite_team and I should get the Bulls. [He executes the command facter favorite_team.] So there we go. So we've got our favorite team for the Bulls and our favorite band is going to be hopefully, the Beatles.
+
+[He executes the command facter favorite_band.] Now I can use these facts just like a core fact, anywhere else in the system. [He executes the command facter.] In the Puppet Agent I could set these facts. So, if you want to see your custom facts, I just issued the facter command. And it lists them in alphabetic order, so you can scroll up and you should be able to see your favorite_band and your favorite_team.
+
+So this is the easiest way that we can extend facter is by using the export. In this video, you learned how to extend facter on a Puppet Agent and to create your own custom facts – and they look exactly like core Puppet facts.
+Directory Locations
+
+[Topic title: Directory Locations. The presenter is Bob Hendry.] In this video, we're going to log in to the Puppet master and look to see how the Puppet master handles local files and the local file structure. [The Terminal window opens.] Now by no means, am I trying to give you an exhaustive list of where stuff is on a Puppet master. But I can give you kind of the cliff notes. So currently, I'm logged into a Puppet master. And what I'm going to do is, I'm going to kind of navigate around and show you different files and folders, and where basically stuff is on the Puppet master. What I'm going to do is, go all the way down to my root folder and then navigate kind of back up again. So, let me go back to my user and then back to root. And kind of do an ls or nls, as I'm kind of going along so you could kind of see where I'm at here in my navigation. And I'm going to try to type slow, so you could see basically where I'm navigating to.
+
+[He executes the command cd etc.] So let me navigate to etc and let's see what's in there. So in etc, we need to navigate to our root Puppet folder. [He executes the command ls -l.] Now our root Puppet folder is going to be different depending on a lot of things. Depending on our version of Puppet, depending on if we're running Puppet Enterprise, or Puppet Open Source. [He executes the command cd puppet.] It really is going to depend. So I would encourage you to go to Puppet to look to see what the documentation is and exactly what the root folder is. [He executes the command ls.] Here the root folder is puppet. So I'm going to navigate to puppet, on some instances it's Puppet Labs. Here it's puppet.
+
+So under puppet, we're going to open up the puppet.conf file. And what that does is, it gives me my Puppet configuration. So actually before I open that up, let me open up the fileserver.conf file. [He executes the command sudo nano fileserver.conf. The fileserver.conf file opens in the second Terminal window.] This is the configuration file that Puppet uses when we have a file server relationship between a Puppet agent and a Puppet master. Now the only real thing here, entry that is required as the path. Notice the path goes, etc/puppet/files. This is where the files will be located if we're using the file server between the Puppet agent and the Puppet master. [He switches to the first Terminal window.] And you could see it here.
+
+We have files right under etc and puppet. [He executes the command cd files. Then he executes the command ls.] So I'm looking in the files folder and I find nothing, which is not really too surprising since I'm really not using it. But let's take a look anyway, right? So at this point, let's take a look at the Puppet configuration file, which you see here as puppet.conf. So I'm going to sudo my way into nano, my favorite text editor. You can have VI, I'll take nano. And let's open up puppet.conf.
+
+[He executes the command sudo nano puppet.conf. The puppet.conf file opens in the second Terminal window.] So here we have our main entries. Now we can have more. We can put different environments in here, with different sorts of pathing. Look to see where our log directory is, our variable, SSL, our run directory. Look at our fact path that we're using for Facter. It's all defined here in our Puppet configuration file. Now we can navigate to these folders and look to see at our logs, we could look to see if we have any variables, SSL, all that other good stuff. But I'm not going to do that.
+
+You see the path right in front of you, if you want to navigate to those folders and take a look around, please be my guest. [He switches to the first Terminal window.] Okay, so now let's do another ls. And let's navigate a little bit deeper into the Puppet hierarchy here. So let's go into manifest. [He executes the cd manifests and ls commands.] You're going to find a file under manifest called site.pp. This is really kind of our main manifest. If we take a look at it, you're going to see the code that I put in there. [He executes the command sudo nano site.pp. The site.pp file opens in the second Terminal window.] Basically, what this does is when a Puppet agent connects, we're going to...or the master's going to look at this file and determine exactly what to include for that agent.
+
+Either we're going to include LAMP server or the IIS server. [The complete command is given at the end of the transcript under the heading Command 1. He switches to the first Terminal window.] So let me go again and cd a little bit further down. And let's see what else I can find. Okay, so that was a manifest. So now what I'm going to do is, I'm going to go down and look at modules. But while I'm there or while I'm here, notice templates. That is where I could put all of my templates to be used by any module. [He executes the command cd modules.] It's used right here and it's up here, folder of manifest and modules.
+
+[He executes the ls command.] So now that I go into modules, you can see all the modules that I currently have on this Puppet master. [He executes the command cd rah-test. Then he executes the command ls.] And if I go into one of them, I can go into rah-test and we could take a look at the file structure that's in there. Now manifest is a folder that's going to contain the manifest folder or the manifest for this specific module. So in this video, you learned how the Puppet master uses the local file structure.
+
+Command 1:
+node default { }
+node 'linuxagent.example.com' {
+include lampserver
+}
+node 'windowsagent.example.com' {
+include iisserver
+}
+Creating Ruby Defined Facts
+
+[Topic title: Creating Ruby Defined Facts. The presenter is Bob Hendry.] In this video, I'm going to describe how you can create Ruby-based facts. Now basically, a Puppet fact is really just a Ruby script that's executed by Puppet and returns certain values, depending on which host it is. So creating your own facts in Ruby isn't really that hard, especially if you know Ruby. And it can be very useful if you want to select a specific host with some specific or some similar attributes.
+
+Let's take a look at the following code example. This is a facter fact, a custom facter fact written in Ruby. [The Notepad++ window opens. The 136803.txt tabbed file is open in the window.] And I'm going to show you the file system type that the current mount point is using. Let's go over this line by line. First we have require facter. [The complete code given at the end of the transcript under the heading Code 1.] Now this is used at some facter-specific functionality to our facter Ruby script, which we have here. Then we have Facter.add.
+
+Now this is a method used to define the fact name with some additional parameters. Like here we have the execution timeout. Now we can limit fact execution to some specific operating system's family released code name with a confine directive, as we see here in this code example.
+
+That brings us to setcode. Now this statement is used to determine the fact value and the value is set here in the Ruby file. Now here our simple fact uses the Facter::Util::Resolution execution or exec function that executes the df system command, which is source of our information about the file system type. So basically, what happens is this thing gets executed.
+
+Our simple fact uses the Facter::Util::Resolution dot execution or exec function that executes the df system command, for which is our source of our information about the file system type. Now the code here can contain or do anything that Ruby can. So as I mentioned before, the more Ruby you know, the better off you are writing facts in Ruby. Now factering other facts is possible with a Facter.value and then put in the facter name function if we wanted to. Here we're not really going to do that.
+
+Now it all depends on where you put this Ruby file. Now remember, in Puppet, location matters. We have to put this Ruby file or any custom facts stored in live facter. And that's going to be a directory underneath the Puppet module. And then added to the host from the Puppet is installed during the next Puppet agent run.
+
+So when we're finished, what we can do is we can check to see if our fact is available on a host just by doing a sudo facter command. Now after it's available, we can use this fact as an ordinary variable in any Puppet module. For example, I'm creating a cron job that's created only on host with a certain file system that relocates chunks with less than five percent of usage. And here we see that on line two through line nine. In this video, you saw how you could use Ruby to write custom Puppet facts.
+
+Code 1:
+require 'facter'
+Facter.add("rootfs_type", :timeout => 120) do
+confine :osfamily => "Debian"
+setcode do
+dfoutput = Facter::Util::Resolution.exec('df –Tl /')
+rootfs_type = dfoutput.split(/\n+/) [1].split(" ") [1]
+rootfs_type
+end
+end
+Usage with Modules
+
+[Topic title: Usage with Modules. The presenter is Bob Hendry.] In this video, I'm going to discuss some advanced configuration with modules. Now I'm logged in to the Puppet master right now, and I'm logged in to the Puppet main drive or the Puppet root folder. Now when we do configuration, what we do is we write manifest code in a variety of different ways. [The Terminal window opens. He executes the command ls.] You know we could write a manifest kind of as a one off, or what we can do is we can build a class file, and we could build our configuration that way.
+
+[He executes the commands cd modules and ls -l.] Now really, the main way that we should do this and we should specify our configuration is through the use of modules. Now modules, basically allow us to package our configuration code in an organized fashion where we can put it. You know, for example, we can build modules by environment. We can do different layers if we're doing any kind of configuration management with Hiera, our modules work really well there.
+
+Also, what we can do is we can build, you know, our own modules and we could get some external ones as well. So we're going to go over a little bit of all of that. So what I'm doing is, I navigated to my modules folder and I'm under puppet. And under modules, you can see all the modules that I have. You know, I have iisserver, I have lampserver, powershell, rah-con, and ubuntu-rahstack, and windowsfeature. Now what we can do at this point is we can either just build our modules from scratch, we can use tools to help us build our modules. Or what we can do is, we can use the module utility to do other things.
+
+So we're going to go over a little bit of each of those, and specifically go over the module utility and see some of the other options that we have. But basically, if you go through each of these modules, you'll see kind of like a scaffolding, kind of a shell, that's kind of built out where we have, you know, each of the modules has their own place – where they can put their manifests and what have you. So I'm going to issue the command, puppet help module and then we get to see some of the other actions that we can perform when we want to do some module management. Like for example, we can build a module. With the build, we could say Build a module release package. We can change a module, we can look at a module, we can generate one. For example, we could generate a boilerplate for a new module, which is basically building out, you know the folder hierarchy and some manifest called.
+
+We can install a module where we install a module from Puppet Forge. We can list modules, we can search for them. We can uninstall and we can upgrade. [He executes the command puppet module list.] So we can use all of these actions to perform some intermediate slash advanced configuration with modules. Especially, some of the code that we can use or the commands that we can use to go to Puppet Forge, to look for modules that may already be existing. And then what we can do, is we can just issue the commands to go to Puppet Forge and pull a module and do the install on a module locally.
+
+So in this case, what we can do is we can do any of these actions to do some advanced or intermediate module management. Now with modules, you have some other stuff that we can use. Like for example, if you're using a module, you can use templates as well. Where, for example, you might have some duplicate code or code that might be redundant across multiple modules that you may want to consolidate into, you know single pieces of code. [He executes the command puppet module generate rah-test.] What we can do is, we can put those in templates.
+
+So I'm going to issue the code here to build a module. So I'm going to do /etc/puppet/module/generate/rah-test. And we have a Permission denied, so I'm going to need to sudo to do that. So I'm going to issue the command, sudo puppet module generate rah-test. So what this does is, it generates my code. In this case, it builds my scaffolding, where I've got rah-test. It's building Modulefile, README, it's building manifests, it's building the init.pp in manifest, and it's also building out some specification folders and some test folders. So with this command, module generate, what I'm doing is I'm generating my own module.
+
+So in this video, you learned about modules and a little bit more about basic module management, and how to use modules for intermediate slash advanced configuration.
+Roles and Profiles
+
+[Topic title: Roles and Profiles. The presenter is Bob Hendry.] In this video, I'm going to talk about Puppet roles and profiles. Now let me give you a little bit of a backstory. When you write a manifest for a specific Puppet agent, in that manifest you put in the resource and how you want that resource to be configured. So let's just say for example, we have multiple Puppet agents. Let's just say we have a dev environment. And in the dev environment, we have, you know, five, six, seven, ten different Puppet agents. Now each of those Puppet agents has a manifest or has a configuration. And it depends on how we serve that configuration to each of the Puppet agents.
+
+We can, you know, obviously serve them a catalog. But the catalog can come from a manifest, it can come from a class in a module, or a couple other different ways. The problem though is, once we actually give the catalog to the agent, if we have other agents that basically get the same stuff, what we need to do is, we need to supply the code there as well. So, still not really a big problem. The only problem is, is if we change something, you know, that's common for each of the Puppet agents, we have to change it in multiple spots.
+
+So after a while, our Puppet code can become very unmanageable. I mean especially, like if for example, we want every Puppet agent to get a specific package. And then, you know, tomorrow we change the package that we want them to get. We would have to change that code in multiple different spots. Now we can use roles and profiles to kind of get around that. Like for example, we may have the scenario where we have multiple Puppet agents, all we get the same thing.
+
+So what we can do is, we can build a role based on that. For example, you see on line 5 here, where I'm building a class role, include profile::base – which is basically our super class. [The Notepad++ window opens. The 136805.txt tabbed file is open. It contains several commands. He points at the command class role {, include profile::base, }.] So then what I can do is, like on line 9, is I can say class role. And I have the role, www inherits role, which is my base class. And I have a comment in there that All WWW servers get tomcat. So I get an include profile. [The command is class role::www inherits role {, include profile::tomcat, }.] So basically, my roles contain profiles.
+
+Now in this case, my profile is tomcat. Now tomcat is just going to be my resource that's going to specify that tomcat is going to be installed, you know, when it's actually included. So basically, what I have here is in this code example, is I have roles and I have profiles. Now I'm not going to go through each individual one, because you get the general idea. But basically what I'm doing is in my roles, is I'm declaring and defining a class hierarchy. And by doing that what I'm doing is, I'm including, you know, the most common stuff farther back in the base classes. So farther back in the base classes are going to be includes, where we're going to include profiles that are going to be used by, you know, most of the subclasses. And then as I build down my inherence hierarchy, what I'm doing is I'm only putting the more specific things at the very end.
+
+So for example, in my base classes I'll get, you know, include profiles that are going to be used for, you know, everyone. And then later, I'm only going to include ones that are used for a few. So I'm basically putting together a hierarchical generalization of roles and profiles, and things that are going to be included. So again here I got my different classes. And I have my roles. And if you scroll...if I scroll all the way down, I'm going to go over some more complex ones. Like for example, I have here my class profiles, starting on line 51, where I'm putting in different classes.
+
+[The command is class profile::base {, include networking, include users, }.] So basically, my profiles and my roles are going to define who gets what in a more organized fashion. So I'm going to go all the way down to the bottom and you're going to see some more examples of these different class profiles. So what we have here is we got our class profiles, you know, later in our inheritance hierarchy that are only going to include, you know, the base classes and the actual includes that are going to be used only by a specific number of classes. So in this video, you learned how to use Puppet roles and profiles to simplify and make more maintainable your manifest code that actually performs that configuration.
+Exercise: Refactor Puppet Configuration
+
+[Topic title: Exercise: Refactor Puppet Configuration. The presenter is Bob Hendry.] In this exercise, you will code a new Puppet function, extend the functionality of Facter, build an advanced module, and then refactor a Puppet agent configuration. Now pause the video and come up with your solution. After you come up with your solution, resume the video and compare your solution to what I came up with. [The Terminal window opens.] Welcome back. Let's see what your solution is.
+
+First thing I'm going to do is log in to my Puppet agent and I'm going to extend Facter. And I'm going to do that by exporting a fact. So I will type in the command export FACTER and I will call this fact prod_group. And I will set it equal to "production" and hit Enter, and I've just extended Facter. I created my own custom fact called prod_group. That's going to be pushed up to the master. And if I want to see the value of that fact, I just need to type in facter prod_group, and I see my production prod_group fact.
+
+Now what I'm going to do is, I'm going to log in to the master and do two things. I want to create a function and create a Ruby gem that's going to be used to actually do the configuration. Now I'm not going to plug this in, I'm going to leave this up to you. [The 136797 file opens in the Notepad window. The complete code is given at the end of the transcript under the name Code 1.] So this is just here for an example. So this is a function that's going to return a Boolean variable, which I call Apache Boolean. So basically, it's going to take the argument and return a true or a false. Now, as far as the fact, what I'm going to do is, I have this Ruby file that is going to add a value to Facter. [The 136803 file opens in the Notepad window. The complete code is given at the end of the transcript under the name Code 2.] So this is going to add a custom fact as well. Now I'm not going to plug this in, just like the function – I'll leave that up to you. So wherever you put it, it's just fine. [He switches to the Terminal window.] Again, I just wanted to see you write a function and to write that Ruby file.
+
+Now the next step is to generate a module and ditto with this. We're not going to put anything in the module scaffolding. I just want you to issue the commands to build one. Again, how you tie this all together is really up to you. I just want you to put together the function, the module, and the RB file. Now the code and the command to generate a module is puppet module generate, and then put in the user ID, hyphen, and the name of the module. [He executes the command puppet module generate rah-module.] Now depending on permissions, I'm going to get a Permission denied. So I'm going to have to use sudo access to do this, to get my elevated permissions. So I'm going to issue the command sudo puppet module, and then generate, and then the user ID, hyphen, the name of the module. [He executes the command sudo puppet module generate rah-module.] I probably should use something a little bit more unique. And then you see the module scaffolding get created. Now at this point, you would do things with your manifest to get your configuration working.
+
+Now the last step is to apply the configuration. And to do that, we go back to the Puppet agent and type in puppet agent --test. And here again, it looks like I need elevated permissions, so let me type in sudo puppet agent --test. And I should get my configuration, my catalog pushed down on me from the master. So we should be successful. And it looks like we are, so congratulations. You're well on your way to becoming an accomplished Puppet master.
+
+Code 1:
+function apache::bool2http($arg) {
+case $arg {
+false, undef, /(?i:false)/ : { 'Off' }
+true, /(?i:true)/ : { 'On' }
+default : { "$arg" }
+}
+}
+
+Code 2:
+require 'facter'
+facter.add("rootfs_type", :timeout => 120) do
+confine :osfamily => "Debian"
+setcode do
+dfoutput = Facter::Util::Resolution.exec('df -Tl /')
+rootfs_type = dfoutput.split(/\n+/)[1].split(" ")[1]
+rootfs_type
+end
+end

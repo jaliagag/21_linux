@@ -256,7 +256,7 @@ creating a custom resource type:
 
 ![012](./assets/p012.png)
 
-**types** are used to set the desired state of the system (what state should services should be). set like core types.
+**types** are used to set the desired state of the system (what state services should be). set like core types.
 
 1. `sudo puppet module generate <moduleName>`
 2. code a manifest
@@ -265,3 +265,35 @@ creating a custom resource type:
 
 3. lines 12-14 --> these would have to be specified on Hiera .yaml file (on any of the levels)
 4. on the agent: `sudo puppet agent --test` puppet agent will receive the catalog from the master so the agent can apply the configuration
+
+templates: `/etc/puppet/templates`
+
+![014](./assets/p014.png)
+
+do some install and file management
+
+![015](./assets/p015.png)
+
+file management line 35
+
+![016](./assets/p016.png)
+
+puppet functions - base language: ruby. statement function (stand on their own) or rvalue functions. rvalue return function when a statement requires a value (if function). execuent only on the MASTER, NEVER on the agents.
+
+- include function; declaration of one or more classes and adds them to the catalog. only ONE class
+
+![017](./assets/p017.png)
+
+- define funciton: where a function is defined; can return a value or not. is the resource defined? does it have a value? at least one string arg, resource name, type name, variable reference. checks for native and custom function types. 4 examples of define functions
+
+![018](./assets/p018.png)
+
+designing a function on puppet
+
+![019](./assets/p019.png)
+
+![020](./assets/p020.png)
+
+![021](./assets/p021.png)
+
+testing: <https://medium.com/swlh/install-puppet-server-on-docker-fe4a80cbe3be>
