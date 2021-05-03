@@ -47,7 +47,7 @@ if _, err := os.Stat(path); os.IsNotExist(err) {
 // if the variable is not used in the program, it can cause an error
 ```
 
-### Data types
+## Data types
 
 - primitives
   - integers - no decimals; platform dependent (the size of each depends on the architecture they were compiled for)
@@ -64,7 +64,7 @@ if _, err := os.Stat(path); os.IsNotExist(err) {
     - string: sequence of bytes - never negative; strings are immutable
 - complex (arrays, maps)
 
-### Declaring variables
+## Declaring variables
 
 ```go
 package main

@@ -700,3 +700,17 @@ target:
 ```
 
 then send a post request to the pod's binding API with the data set to the binding object in JSON format: `curl --header "Content-Type:application/json" --request POST --data '{"apiVersion":"v1", "kind": "Binding" } http://$SERVER/api/v1/namespaces/default/pods/$PODNAME/binding/'`
+
+labels and selectors: standard method to group things together. also to apply filters based on criteria.
+
+- labels are properties attached to items - undermetadata, create a section called _labels_.
+- selectors help you filter the items. `kubectl get pods --selector app=App1`
+
+Replica sets: to link the replicaset to the pod, we configure the selector field under the replica set > spec > selector > matchLabels (defined as) > app: App1 (as the pods will be defined). it's the same for other objects, say services. services use the selector to match the _pods_ in the replica set def file.
+
+Annotations: build version, names, emails...
+
+- `kubectl get pods --show-labels`
+- `kubectl get pods --selector env=dev --no-headers | wc -l` ; `kubeclt get pods -l env=dev`
+- `kubectl get all --selector env=prod --no-headers | wc -l`
+- `kubectl get pod --selector env=prod,bu=finance,tier=frontend`

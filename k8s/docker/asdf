@@ -1,0 +1,33 @@
+dxcaudev@idappp47:/opt/feedfiles$ du -sk * | sort -nr | head
+151768936       idappp53_OIM_LOGS
+24698112        idappp51_OIM_LOGS
+19668504        idappp48_OIM_LOGS
+19273944        PROD_ADMIN_DR_1023
+17285872        oim_bundle_patch
+16155528        FlatFile
+13255672        idappp47_OIM_LOGS
+8615800 idappp52_OIM_LOGS
+7452504 idappp50_OIM_LOGS
+5352936 CredentialAccessPermission
+dxcaudev@idappp47:/opt/feedfiles$ ls -l idappp53_OIM_LOGS/
+total 171020352
+-rw-r--r--   1 idmadmin idmadmin 290150340 May  1 06:11 _access.log.tar.gz
+-rw-r--r--   1 idmadmin idmadmin 538318563 May  1 06:09 _oim_server7.log.tar.gz
+-rw-r--r--   1 idmadmin idmadmin 238062211 May  1 06:01 _oim_server7.out0.tar.gz
+-rw-r-----   1 idmadmin idmadmin 1093176 Sep 24  2020 access.log
+-rw-r-----   1 idmadmin idmadmin 5120003 Oct  6  2020 access.log00001
+
+
+
+
+dxcaudev@idappp47:/$ du -sk * | sort -nr | head
+357.286.559       opt
+31.158.850        proc
+9414964 usr
+2.774.193 var
+834362  export
+311874  etc
+125956  platform
+83929   kernel
+82739   lib
+23022   system

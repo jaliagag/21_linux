@@ -24,9 +24,41 @@ ansible_python_interpreter=/usr/bin/python3
 
 inventory files be like:
 
-```txt
-[example]
-<ip>
+```yaml
+[example]   # inventory group
+<ip>        # list server ips
 ```
 
-`ansible -i inventory example -m ping -u centos`
+`ansible -i inventory example -m ping -u <user>`
+
+### ad hoc commands
+
+`ansible example -a "free -h" -u <user>`
+
+### vagrant
+
+- `vagrant init <imagename>` creates a new file: vagrant init geerlingguy/centos7. RUBY.
+- `vagrant up` - pulls the image and creates a vm as indicated in the file
+- `vagrant ssh`
+- `vagrant halt`
+- `vagrant destroy`
+- run a playbook using vagrant
+
+![001](./assets/001.PNG)
+
+- `vagrant provision` will look for playbook called "playbook.yml"
+
+### playbooks
+
+this is a _play_
+
+```yaml
+---
+- hosts: all
+  become: yes
+  tasks:
+    - name: Ensure NTP is installed
+      yum: name=ntp state=present
+    - name: Ensure NTP is running
+      service: name=ntp state=started enabled=yes
+```
