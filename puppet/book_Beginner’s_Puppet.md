@@ -363,3 +363,33 @@ exec { "warever-software":
     user    => "ubuntu",
 }
 ```
+
+if _user_ is not specified, the command is run as root user.
+
+### onlyif and unless
+
+- `onlyif`: it specifies a command for puppet to run, and the exit status from this command determines whether or not the exec will be applied (0 == success, non-zero == failure)
+
+```pp
+exec { "process-incoming-warever":
+    command => "/usr/local/bin/warever-software --import /tmp/incoming/*",
+    onlyif  => "/bin/ls /tmp/incoming/*",
+}
+```
+
+onlyif attribute specifies the check command which puppet should run first, to determine whether or not the exec resource needs to be applied
+
+- `unless`: if you specify a command to the unless attribute, the exec will always be run unless the command returns a zero exit status
+
+### refreshonly
+
+- `refreshonly`: an exec resource needs to run only when some other puppet resource is changed. value _true_ (exec will never be applied unless another resource triggers it with **notify**) or _false_.
+
+```pp
+file { "/etc/aliases":
+    content => "root: john@warever.com",
+    notify  => Exec["newaliases"],
+}
+
+exec
+```
