@@ -94,7 +94,7 @@ see what version of a package thinks you have installed, we can use the **puppet
 
 puppet resource has an interactive config feature. `puppet resource -e package openssl` - puppet generates a manifest for the current state of the resource and open it in an editor. if you make changes and save it, puppet will automatically apply that manifest to make changes to the system
 
-### services
+### services c2
 
 service: a long running process that either does some continuous kind of work, or waits for requests and then acts on them
 
@@ -254,7 +254,7 @@ puppet has it's own version of ruby - to apply a gem to puppet's capabilities we
 
 ensure_packages: to avoid potential package conflicts between different parts of the puppet code
 
-### services
+### services c4
 
 hasstatus attribute: if you findthat puppet keeps attempting to start the service on every puppet run, even though the service is running, it may be that puppet's default service status detection (`systemctl is-active <SERVICE>`) isn't working
 
@@ -279,10 +279,87 @@ service { "ntp":
 }
 ```
 
-
+`hasrestart => true` means that puppet will try to send a _restart_ command to it. if the default restart command doesn't work, we can specify the restart command you like for the service using the restart attribute `restart => '/bin/echo Restarting >> /tmp/debug.log && systemctl restart ntp',`
 
 ### users
 
+user is a named entity that can own files and run commands with certain permissions.
+
+```pp
+group { "devs":
+    ensure  => present,
+    gid     => 3000,
+}
+
+user { "hsing-hui":
+    ensure  => present,
+    uid     => "3001",
+    home    => "/home/hsing-hui",
+    shell   => "/bin/bash",
+    groups  => ["devs"],
+}
+```
+
+add authorized keys
+
+```pp
+ssh_uthorized_key { "joseemailazo@lemail.com":
+    user    => "ubuntu",
+    type    => "ssh-rsa",
+    key     => "AAAAB3NzaC1yc2EAAAABIwAAAIEA3ATqENg+GWACa2BzeqTdGnJhNoBer8x6pfWkzNzeM8Zx7/2Tf2pl7kHdbsiTXEUawqzXZQtZzt/j3Oya+PZjcRpWNRzprSmd2UxEEPTqDw9LqY5S2B8og/ NyzWaIYPsKoatcgC7VgYHplcTbzEhGu8BsoEVBGYu3IRy5RkAcZik=",
+}
+```
+
+```pp
+user { "godot":
+    ensure  => absent,
+}
+```
+
 ### cron
 
+```pp
+cron { "run-puppet":
+    command     => "/usr/local/bin/run-puppet",
+    # user        => "ubuntu", # who should run the command
+    # environment => ["MAILTO=admin@example.com", "PATH=/bin"], # env varibles for the cron job
+    hour        => "*",
+    # hour      => "0",
+    minute      => "*/15",
+    # minute    => "0",
+    # weekdy    => ["Saturday", "Sunday"],
+}
+```
 
+rather than running a cron job in bulk on the whole environment, we can use `fqdn_rand()`. it provides  random number up to a specified maximum value, which will be different on each node.
+
+```pp
+cron { "run daily backup":
+    command => "/usr/local/bin/backup",
+    minute  => "0",
+    hour    => fqdn_rand(24, "run daily backup"),
+}
+
+cron { "run daily backup sync":
+    command => "/usr/local/bin/backup_sync",
+    minute  => "0",
+    hour    => fqdn_rand(24, "run daily backup sync"),
+}
+```
+
+because we gave a different string as the second argument to `fqdn_rand` for each cron job, it will return a different random value for each `hour` attribute.
+
+removing the resource declaration from your puppet manifest does not remove the corresponding config from the node - in order to do that you need to specify `ensure => absent` on the resource.
+
+### exec
+
+an `exec` allows you to run any arbitrary command on the node
+
+```pp
+exec { "warever-software":
+    cwd     => "/tmp/warever-software",  # where the command will be executed
+    command => "/tmp/warever-software/configure && /usr/bin/make/install",  # use the full path for the commands
+    creates => "/usr/local/bin/warever-software",   # a file which should exist after the command has been run - without creates attribute, an exec resource will run every time puppet runs
+    user    => "ubuntu",
+}
+```
