@@ -366,7 +366,7 @@ exec { "warever-software":
 
 if _user_ is not specified, the command is run as root user.
 
-### onlyif and unless
+#### onlyif and unless
 
 - `onlyif`: it specifies a command for puppet to run, and the exit status from this command determines whether or not the exec will be applied (0 == success, non-zero == failure)
 
@@ -381,7 +381,7 @@ onlyif attribute specifies the check command which puppet should run first, to d
 
 - `unless`: if you specify a command to the unless attribute, the exec will always be run unless the command returns a zero exit status
 
-### refreshonly
+#### refreshonly
 
 - `refreshonly`: an exec resource needs to run only when some other puppet resource is changed. value _true_ (exec will never be applied unless another resource triggers it with **notify**) or _false_.
 
@@ -391,5 +391,162 @@ file { "/etc/aliases":
     notify  => Exec["newaliases"],
 }
 
-exec
+exec { "newaliases":
+    command     => "/usr/bin/newaliases",
+    refreshnoly => true,
+}
+```
+
+when this manifest is applied for the first time, the /etc/aliases resource causes a change to the file's contents, so puppet sends a notify message to the exec resource. the use of this attribute is not that common.
+
+#### logouput
+
+this attribute determines whether puppet will log the ouput of the exec command along with the usual informative puppet output. three values: true, false, on_failure (this is the default)
+
+#### timeout
+
+by default puppet allows an exec command to run for 300 seconds (5 min), at which point puppet will terminate it; to allow longer period of time to complete, we can use timeout. the value is the maximum execution time for the command in seconds. timeout to 0 disables automatic timeout and allows the command to run forever (last resort).
+
+## chapter 5
+
+a variable in puppet is simply a wy of giving a name to a particular value:
+
+```pp
+$php_package = "php7.0-cli"
+
+package { $php_package:
+    ensure  => installed
+}
+```
+
+the dollar sign tells puppet that what follows is a variable name (var names _must_ begin with a a lowercase letter or an underscore)
+
+vars can contain diff types of data: strins, numbers or boolean values
+
+```pp
+$my_name = "joe"
+$age = 31
+$scheduled = true
+```
+
+### variables in strings
+
+interpolate: puppet inserts the current value of the variable into the contents of the string, replacing the name of the variable
+
+```pp
+$my_name = joe
+notice("hello, ${my_name}!")
+```
+
+### arrays
+
+array is an ordered sequence of values, each of which can be of any type
+
+```pp
+$heights = [193, 120, 160, 174]
+
+$first_heigh = $heights[0]
+```
+
+### array of resources
+
+```pp
+$dependencies = [
+    'php7.0-cgi',
+    'php7.0-cli',
+    'php7.0-common',
+    'php7.0-gd',
+    'php7.0-json',
+    'php7.0-mcrypt',
+    'php7.0-mysql',
+    'php7.0-soap',
+]
+
+package { $dependencies:
+    ensure  => installed,
+}
+```
+
+giving an array of strings as the title of a resource results in puppet creating multiple resources, all identical except for the title
+
+### hashes
+
+a hash, aka a dictionary, is like an array, but instead of just being a sequence of values, each value has a name:
+
+```pp
+$heights = {
+    'john'  => 193,
+    'rabiah' => 120,
+    'abigail' => 181,
+    'melina' => 164,
+    'sumiko' => 172,
+}
+
+notice("joh's height is ${heights['john']}cm.")
+```
+
+we can do the same with attributes
+
+```pp
+$attributes = {
+    'owner' => 'ubuntu',
+    'group' => 'ubuntu',
+    'mode'  => '0644',
+}
+file { '/tmp/test':
+    ensure  => present,
+    *       => $attributes,
+}
+```
+
+*, aka attribute splat operator, tells puppet to treat the specified hash as a list of attribute-value pairs to apply to the resource.
+
+### expressions
+
+expressions also have a value - simplest expressions are just literal values: 42, true, "whats uppp". we can combine numeric values with arithmetic operators to create arithmetic expressions
+
+```pp
+$value = (17 * 8) + (12 / 4) -1
+notice($value)
+```
+
+boolean expressions (all of these return _true_):
+
+```pp
+notice(9 < 10)
+notice(11 > 10)
+notice(10 >= 10)
+notice(10 <= 10)
+notice('foo' == 'foo')
+notice('foo' in 'foobar')
+notice('foo' in ['foo', 'bar'])
+notice('foo' in { 'foo' => 'bar' })
+notice('foo' =~ /oo/)
+notice('foo' =~ String)
+notice(1 != 2)
+```
+
+regex: `=~` tries to match a given value against a regular expression
+
+```pp
+$candidate = "foo"
+notice($candidate =~ /foo/) # literal
+notice($candidate =~ /f.o/) # f, any character, o
+```
+
+### conditional expressions
+
+#### if statements
+
+```pp
+$install_perl = true
+if $install_perl {      # if var install_perl is true, apply ensure => installed
+    package { 'perl':
+        ensure  => installed,
+    }
+} else {    # if var install_perl is false, apply ensure => absent
+    package { 'perl':
+        ensure => absent,
+    }
+}
 ```
