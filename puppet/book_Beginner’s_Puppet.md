@@ -550,3 +550,43 @@ if $install_perl {      # if var install_perl is true, apply ensure => installed
     }
 }
 ```
+
+#### case statements
+
+```pp
+$webserver = 'nginx'
+case $webserver {
+    'nginx': {
+        notice("Looks like you're using Nginx! Good choice!")
+    }
+    'apache': {
+        notice("Ah, you're an Apache fan, eh?")
+    }
+    'IIS': {
+        notice('Well, somebody has to.')
+    }
+    default: {
+        notice("I'm not sure which webserver you're using!")
+    }
+}
+```
+
+### finding out facts
+
+**Facter** - mechanism for getting system information; each piece of information provided by facter is known as a **fact**.
+
+facts hash: puppet variable called to access facter facts: `notice($facts['kernel'])` || older versions `notice($::kernel)`.
+
+`facter os`: shows the hash of available os-related facts; `puppet facts` what facts will be available to puppet manifests; facter os/uptime (system_uptime)/timezone/ruby/path
+
+to access a particular value in a hash, you specify the key name in square brackets. to access a value inside a hash, you add anotehr key name in square brakes after the first - `notice($facts['os']['distro']['codename'])`
+
+```pp
+if $facts['os']['selinux']['enabled'] {
+    notice('SELinux is enabled')
+} else {
+    notice('SELinux is disabled')
+}
+```
+
+
