@@ -829,13 +829,24 @@ place the pod either on Large or Medium sized pods
 # you don't need the value section for that - it does not compare the values
 ```
 
-what if node affinity cannot match a node with the given expression? this is solved by the long sentence (line 810). it is called the node affinity type:
+what if node affinity cannot match a node with the given expression? this is solved by the long sentence (line 810). it is called the node affinity type - it defines the behaviour of the scheduler as regards node affinity and the stages in the life cycle of the pod
 
 - Available
-  - requiredDuringSchedulingIgnoredDuringExecution:
+  - requiredDuringSchedulingIgnoredDuringExecution: 
   - preferredDuringSchedulingIgnoredDuringExecution:
 - Planned
-  - requiredDuringSchedulingRequiredDuringExecution:
+  - requiredDuringSchedulingRequiredDuringExecution: this is still being develop - it will evict any pods upon a change in the environment (say a label).
+
+- DuringScheduling: state when a pod does not exist and is created for the first time. when first created, the affinity rules created are considered to place a pod on the right node. what if we forgot to label the node? that's where the type of node affinity
+  - Required: the scheduler will mandate that the pod be placed on the node with the given affinity rules. if it cannot find one, the pod will not be scheduled. this type will be used when the placement of the pod is _crucial_. 
+  - preferred: the placement of the pod is not as important as running the load itself. in case of a matching node not found, the scheduler will simply ignore node affinity rules and place the pod on any available node. 
+- DuringExecution: a pod has been running and a change is made to the environment that affects node affinity (label of a node, for instance). these changes will not impact the node once they have been scheduled (provisioned?).
+
+![30](./assets/30.PNG)
+
+
+
+
 
 
 
