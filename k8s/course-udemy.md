@@ -714,3 +714,22 @@ Annotations: build version, names, emails...
 - `kubectl get pods --selector env=dev --no-headers | wc -l` ; `kubeclt get pods -l env=dev`
 - `kubectl get all --selector env=prod --no-headers | wc -l`
 - `kubectl get pod --selector env=prod,bu=finance,tier=frontend`
+
+### taints and tolertions
+
+pod to node relationship, what pod goes to what node. taints and tolerations are used to set restrictions on what nodes can pods be scheduled.
+
+when pods are created, the k8s scheduler tries to put them on the available worker nodes.
+
+say we want pods to go or _not_ go to a certain node.
+
+first, we prevent all pods from being placed on the node by placing a _taint_ on the node. by default, pods don't have tolerations which means that, unless specified otherwise, no pod can tolerate any taint, no pods can be placed on the node.
+
+then we have to enable pods by specifying which pods are tolerant. we had a toleration to a pod for a specific taint.
+
+- taints are set on nodes
+- tolerations are set on pods
+
+the taint is a key-value pair
+
+`kubectl taint nodes node-name key=value:taint-effect`
