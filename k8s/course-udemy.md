@@ -732,4 +732,114 @@ then we have to enable pods by specifying which pods are tolerant. we had a tole
 
 the taint is a key-value pair
 
-`kubectl taint nodes node-name key=value:taint-effect`
+`kubectl taint nodes node-name key=value:taint-effect` the taint effect defines what happens to the pod if they do not tolerate the taint. there are three _taint_ effects:
+
+1. NoSchedule: the pod will not be scheduled. 
+2. PreferNoSchedule: the system will try to avoid placing a pod on the node (but that is not guaranteed)
+3. NoExecute: new pods will not be scheduled on the pod and existing pods on the node will be evicted if they do not tolerate the taint.
+
+`kubectl taint nodes node1 app=blue:NoSchedule`
+
+to add a toleration to pod throught the definition file, add a section called tolerations under _spec_:
+
+```yaml
+  tolerations:
+  - key: "app"
+    operator: "Equal"
+    value: "blue"
+    effect: "NoSchedule"
+```
+
+taints and toleratiosn are meant to restrict nodes from accepting certain pods. a node might be configured to accept only a certain toleration, but that does not mean that the pod _will always_ be placed on that node if there are no tains applied to the other nodes.
+
+tainsts and tolerations do not tell the pod to go to a particular node. it tells the node to only accept pods with certain tolerations.
+
+if the requirement is to restrict a pod to a certain node, it is accomplished through a concept known as _node affinity_.
+
+as regards master nodes: the scheduler does not schedule any pods on the master node because when the k8s is being set up, a taint is applied automatically that prevents any pods from being placed on the node.
+
+`kubectl describe node kubemaster | grep Taint`
+ 
+```yaml
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bee
+spec:
+  containers:
+    - name: bee
+      image: nginx
+  tolerations:
+    - key: "spray"
+      operator: "Equal"
+      value: "mortein"
+      effect: "NoSchedule"
+```
+
+- `kubectl run bee --image=nginx --restart=Never --dry-run -o yaml > bee.yaml`
+- `kubectl explain pod --recursive | less` --> see options for pods
+- `kubectl get pod -o wide`
+
+remove a taint: `kubectl taint nodes node1 key1=value1:NoSchedule-`
+
+if we don't know why a pod is not being created, we can use **kubectl describe pod <podName>** to search for any warnings or errors.
+
+### node selectors | node affinity
+
+- node selectors: simpler, in the pod def file we add a new property called nodeSelector
+
+```yaml
+  nodeSelector:
+    size: Large
+```
+
+size: Large - _labels_ assigned to the nodes. the scheduler uses these labels to match and identify the right node to place the nods on.
+
+labeling a node: `kubectl label nodes <nodeName> <labelKey>=<labelValue>` or on the node definition file. after labelling the node we can create the pod using the nodeSelector attribute.
+
+limitations: it's simple, not much logic (either, or)
+
+- node affinity: ensure that pods are hosted on a particular node. advanced capability to limit pod placement on specific pods.
+
+place the pod either on Large or Medium sized pods
+
+```yaml
+  affinity:
+    nodeAffinity:
+     requiredDuringSchedulingIgnoredDuringExecution:
+       nodeSelectorTerms:
+       - matchExpressions:
+         - key: size
+	   operator: In
+	   values:
+	  - Large
+	  - Medium
+########################################################
+      - matchExpressions:
+         - key: size
+	   operator: NotIn
+	   values:
+	   - Small
+########################################################
+      - matchExpressions:
+         - key: size
+	   operator: Exists
+# the exists operator will check if the label "size" exists on the node
+# you don't need the value section for that - it does not compare the values
+```
+
+what if node affinity cannot match a node with the given expression? this is solved by the long sentence (line 810). it is called the node affinity type:
+
+- Available
+  - requiredDuringSchedulingIgnoredDuringExecution:
+  - preferredDuringSchedulingIgnoredDuringExecution:
+- Planned
+  - requiredDuringSchedulingRequiredDuringExecution:
+
+
+
+
+
+
+
