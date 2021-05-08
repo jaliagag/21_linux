@@ -842,7 +842,7 @@ what if node affinity cannot match a node with the given expression? this is sol
   - preferred: the placement of the pod is not as important as running the load itself. in case of a matching node not found, the scheduler will simply ignore node affinity rules and place the pod on any available node. 
 - DuringExecution: a pod has been running and a change is made to the environment that affects node affinity (label of a node, for instance). these changes will not impact the node once they have been scheduled (provisioned?).
 
-![30](./assets/30.PNG)
+![30](./assets/30.png)
 
 
 
