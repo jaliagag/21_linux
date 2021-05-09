@@ -9,6 +9,7 @@
 - `kubectl describe daemonsests --namespace=<nsName>`
 - `kubectl get pods -o wide`
 - `watch "kubectl get pods"`
+- view containers within a pod: `kubectl logs webapp -c`
 
 ## manage resources
 
@@ -20,3 +21,11 @@
 ## create docs
 
 - `kubectl get pod webapp -o yaml > my-new-pod.yaml` extract the pod definition i nyaml
+
+## rollout - deployments
+
+- create `kubectl create -f <yamlfile>.yaml`
+- get `kubectl get deployments`
+- update `kubectl apply -f <yamlFile>.yaml` || `kubectl set image <depplyName> <contName-nginx>=<newImage-nginx:1.9.1`
+- status: `kubectl rollout status deployments <deploymentName>` || `kubectl rollout history deployments <deploymentName>`
+- rollback: `kubectl rollout undo deployments <deploymentName>`

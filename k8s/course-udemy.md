@@ -345,7 +345,7 @@ mayor difference with replication controller is the "selector" field: it identif
 
 Labels and selectors
 
-The role of the replica set is to monitor the pod and in case any on them were to fail, deploy new ones. the rs is a process that monitors the pod. the replica set knows which pod to monitor through the labels attached to pods, defined under the selector field.
+**The role of the replica set** is to monitor the pod and in case any on them were to fail, deploy new ones. the rs is a process that monitors the pod. the replica set knows which pod to monitor through the labels attached to pods, defined under the selector field.
 
 to escale the number of replicas, we can simply update the rs config file `kubectl replace -f <file>`; to do this task manually, we can run `kubectl scale --replicas=6 <file>` or `kubectl scale --replicas=6 <type> <rsName>`<-- this does not update the rs definition file.
 
@@ -1067,3 +1067,234 @@ additional schedulers
 - <https://stackoverflow.com/questions/28857993/how-does-kubernetes-scheduler-work>
 
 ## logging and monitoring
+
+resource consumption - what to monitor?
+
+- metrics server - one metrics server per k8s cluster. it retrieves metrics from each of the k8s nodes and pods, aggregates them and stores them in memory (this service is an in-memory solution). it does not store information on the disk, you cannot see historical performance data. we need advanced monitoring soultion. the kubelect runs a subcomponent known as cAdvisor (container Advisor) responsible for retrieving performance metrics from PODs and exposing them through the kubelet api to make the metrics available for the metrics server . running minikube - `minikube addons enable metrics-server` - for all other environments, run `git clone https://github.com/kubernetes-incubator/metrics-serve` + `kubectl create -f deploy/1.8+/`; these commands deploys a number of pods, services and roles to allow the metrics server to pull the necessary data - to see data: `kubectl top node` `kubectl top pod`. kodekloud component: <https://github.com/kodekloudhub/kubernetes-metrics-server.git>
+- prometheus and other monitoring apps
+
+### application logs
+
+logging in docker: `docker run -d kodekloud/event-simulator` throw output to stdout. `docker logs -f ecf`
+
+in k8s
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: event-simulator-pod
+spec:
+  containers:
+  - name: event-simulator
+    image: kodekloud/event-simulator
+  - name: image-processor
+    image: some-image-processor
+```
+
+`kubectl logs -f event-simulator-pod event-simulator` --> these logs are specific to the container running inside the pod; `kubectl logs -f <podName> <containerName>`
+
+- `kubectl logs <podName> | grep -i whatever`
+
+## Application Lifecycle Management
+
+### rolling updates and rollbacks
+
+when you first create a deployiment, it triggers a rollout - a new rollout creates a new deployment revision (revision 1). in the future, when the app is updated, a new rollout is triggered and a new deployment revision is created (revision 2).
+
+- `kubectl rollout status <deploymentName>` see the status of the rollout
+- `kubectl rollout history <deploymentName>` revisions and history of the deployment
+
+2 types of deplyment rollout strategies
+
+1. Recreate: destroy current pods at once and create new ones with the new version. not the default
+2. rolling-update: we do not destroy all pods at once, but rather we take one pod down and bring another back up - the app doesn't go down, upgrade is seamless. if we don't specify a specific strategy, k8s will assume it's a rolling update.
+
+say we have a definition file with a deployment; we want to update the image, we simply update the def file and run `kubectl apply -f <defFile>`
+
+![36](./assets/036.PNG)
+
+we can specify the image with the command: `kubectl set image <deploymentName> nginx=nginx:1.9.1` but that will not update the definition file
+
+when a new deployment is created, say with 5 replicas, it first creates a replica set automatically, which in turn creates the number of pod required to meet the number of replicas. when we update the application, the k8s deployment object creates a new replica set under the hood and starts deploying the containers there - at the same time, taking down the pod in the old replica set following a rolling update strategy - this is what we see when we issue the `kubectl get replicasets` command.
+
+to bring back the previous version of the app, we can issue the `kubectl rollout undo <deploymentName>`. k8s will destroy the new pods in the replica set and bring back the old replica set
+
+```sh
+for i in {1..35}; do
+   kubectl exec --namespace=kube-public curl -- sh -c 'test=`wget -qO- -T 2  http://webapp-service.default.svc.cluster.local:8080/info 2>&1` && echo "$test OK" || echo "Failed"';
+   echo ""
+done
+```
+
+### commands and arguments in definition files - docker
+
+a container lives as long as the process inside it is alive. if a process crashes the container dies. who defines what processes should be running on the container? on a docker image/file there is a line `CMD ["nginx"]`
+
+on a docker file, if we have the **CMD** option, when the container is built, that command gets executed; it is "hardcoded" what it does (correr un comando por defecto que es facilmente pisable - comando que se ejecuta cuando corre el contenedor, levantar servicios o servidores que se quedan corriendo). we can use **ENTRYPOINT** on the docker file and when we run the docker image, we need to specify a parameter that will be used when running the docker image (está pensado para que no pueda ser fácilmente sobreescribible - pensado para usar el contenedor como si fuera un ejecutable).
+
+both CMD and ENTRYPOINT can be used; cmd would be the default parameter to be used in case no parameters are passed
+
+in k8s pods
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ubuntu-sleeper-pod
+spec:
+  containers:
+  - name: ubuntu-sleeper-pod
+    image: ubuntu-sleeper-pod
+    command: ["sleep2.0"] # overwrites ENTRYPOINT in docker file
+    args: ["10"] # anything that is appended to the docker run command will go into this section
+```
+
+the args option in the pod def file overwrites the CMD instruction in the docker file. to overwrite the ENTRYPOINT (ep) we use the command field
+
+![37](./assets/037.PNG)
+
+it is not the command field that overwrites the CMD instruction in the docker file.
+
+### environment variables
+
+```yaml
+spec:
+  containers:
+  - name: simple-web-app
+    image: simple-web-app
+  # plain key value pair
+  env:
+  - name: APP_COLOR
+    value: pink
+  # configMap
+  env:
+  - name: APP_COLOR
+    valueFrom:
+      configMapKeyRef:
+  # Secrets
+  env:
+  - name: APP_COLOR
+    valueFrom:
+      secretKeyRef:
+```
+
+`docker run -e APP_COLOR=pink simple-web-app`
+
+env is a yaml array
+
+when you have a lot of pod def files, it will become difficult to manage environment data stored within the query files. we can take this information outside the pod definition file and manage it centrally using configuration maps.
+
+configMaps are used to pass configuration data in the form of key-value pairs in k8s. when a pod is created, inject the configMap into the pod so the key value pair are available for the application hosted inside the container in the pod.
+
+there are 2 phases in configuring configMaps.
+
+1. create the config map
+2. inject them into the pod
+
+creating a config map:
+
+- imperative way
+
+`kubectl create configmap <config-name> --from-literal=<key>=<value>`; example: `kubectl create configmap app-config --from-literal=APP_COLOR=blue --from-literal=APP_MOD=prod`
+
+using a file: `kubectl create configmap <config-name> --from-file=<path-to-file>`
+
+- declarative way
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data: # rather than spec
+  APP_COLOR: blue
+  APP_MODE: prod
+```
+
+`kubectl create -f <file>`
+
+```yaml
+#app-config
+APP_COLOR: blue
+APP_MODE: prod
+#mysql-config
+port: 3306
+max_allowrd_packet: 128M
+#redis-config
+port: 6379
+rdb-compression: yes
+```
+
+names will be used to associate them with pods.
+
+`kubectl get configmaps`; `kubectl describe configmaps`
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ubuntu-sleeper-pod
+spec:
+  containers:
+  - name: ubuntu-sleeper-pod
+    image: ubuntu-sleeper-pod
+    envFrom:
+    - configMapRef:
+        name: app-config
+```
+
+envFrom is a list.
+
+![38](./assets/038.PNG)
+
+### secrets
+
+secrets are used to store sensitve information like passwords or keys; they are similar to config maps except they are stored in a hash or enconded format.
+
+1. create the secret
+2. inject the secret in the pod
+
+imperative:
+
+`kubectl create secret generic <secretName> --from-literal=<key>=<value>`; `kubectl create secret generic <secretName> --from-file=<file>`
+
+declarative
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secret
+data:
+  DB_Host: mysql
+  DB_User: root
+  DB_Password: paswrd
+```
+
+while creating a secret with the declarative approach we must specify the secret values in a hash format. to turn text into hash format in a linux host: `echo -n '<text>' | base64`
+
+view the values of the secrets: `kubectl get secret <secretName> -o yaml`
+
+decoding hash values: `echo -n '<hashedValue>' | base64 --decode`
+
+injecting the secret:
+
+```yaml
+spec:
+  containerse:
+  - name: simple
+    image: wharever
+    envFrom:
+    - secretRef:
+        name: app-secret # name of the secret
+```
+
+![39](./assets/039.PNG)
+
+![40](./assets/040.PNG)
+
+- <https://kubernetes.io/docs/concepts/configuration/secret>
+- <https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/>
+- <https://kubernetes.io/docs/concepts/configuration/secret/#risks>
+- <https://www.vaultproject.io/>
