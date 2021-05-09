@@ -734,7 +734,7 @@ the taint is a key-value pair
 
 `kubectl taint nodes node-name key=value:taint-effect` the taint effect defines what happens to the pod if they do not tolerate the taint. there are three _taint_ effects:
 
-1. NoSchedule: the pod will not be scheduled. 
+1. NoSchedule: the pod will not be scheduled.
 2. PreferNoSchedule: the system will try to avoid placing a pod on the node (but that is not guaranteed)
 3. NoExecute: new pods will not be scheduled on the pod and existing pods on the node will be evicted if they do not tolerate the taint.
 
@@ -759,7 +759,7 @@ if the requirement is to restrict a pod to a certain node, it is accomplished th
 as regards master nodes: the scheduler does not schedule any pods on the master node because when the k8s is being set up, a taint is applied automatically that prevents any pods from being placed on the node.
 
 `kubectl describe node kubemaster | grep Taint`
- 
+
 ```yaml
 ---
 apiVersion: v1
@@ -777,13 +777,13 @@ spec:
       effect: "NoSchedule"
 ```
 
-- `kubectl run bee --image=nginx --restart=Never --dry-run -o yaml > bee.yaml`
+- `kubectl run bee --image=nginx --restart=Never --=client -o yaml > bee.yaml`
 - `kubectl explain pod --recursive | less` --> see options for pods
 - `kubectl get pod -o wide`
 
 remove a taint: `kubectl taint nodes node1 key1=value1:NoSchedule-`
 
-if we don't know why a pod is not being created, we can use **kubectl describe pod <podName>** to search for any warnings or errors.
+if we don't know why a pod is not being created, we can use `kubectl describe pod <podName>` to search for any warnings or errors.
 
 ### node selectors | node affinity
 
@@ -802,29 +802,30 @@ limitations: it's simple, not much logic (either, or)
 
 - node affinity: ensure that pods are hosted on a particular node. advanced capability to limit pod placement on specific pods.
 
-place the pod either on Large or Medium sized pods
+place the pod either on Large or Medium sized pods - under _spec_
 
 ```yaml
+spec:
   affinity:
     nodeAffinity:
      requiredDuringSchedulingIgnoredDuringExecution:
        nodeSelectorTerms:
        - matchExpressions:
          - key: size
-	   operator: In
-	   values:
-	  - Large
-	  - Medium
+           operator: In
+           values:
+           - Large
+           - Medium
 ########################################################
-      - matchExpressions:
-         - key: size
-	   operator: NotIn
-	   values:
-	   - Small
+    - matchExpressions:
+        - key: size
+    operator: NotIn
+    values:
+    - Small
 ########################################################
-      - matchExpressions:
-         - key: size
-	   operator: Exists
+    - matchExpressions:
+        - key: size
+    operator: Exists
 # the exists operator will check if the label "size" exists on the node
 # you don't need the value section for that - it does not compare the values
 ```
@@ -832,25 +833,201 @@ place the pod either on Large or Medium sized pods
 what if node affinity cannot match a node with the given expression? this is solved by the long sentence (line 810). it is called the node affinity type - it defines the behaviour of the scheduler as regards node affinity and the stages in the life cycle of the pod
 
 - Available
-  - requiredDuringSchedulingIgnoredDuringExecution: 
+  - requiredDuringSchedulingIgnoredDuringExecution:
   - preferredDuringSchedulingIgnoredDuringExecution:
 - Planned
   - requiredDuringSchedulingRequiredDuringExecution: this is still being develop - it will evict any pods upon a change in the environment (say a label).
 
 - DuringScheduling: state when a pod does not exist and is created for the first time. when first created, the affinity rules created are considered to place a pod on the right node. what if we forgot to label the node? that's where the type of node affinity
-  - Required: the scheduler will mandate that the pod be placed on the node with the given affinity rules. if it cannot find one, the pod will not be scheduled. this type will be used when the placement of the pod is _crucial_. 
-  - preferred: the placement of the pod is not as important as running the load itself. in case of a matching node not found, the scheduler will simply ignore node affinity rules and place the pod on any available node. 
+  - Required: the scheduler will mandate that the pod be placed on the node with the given affinity rules. if it cannot find one, the pod will not be scheduled. this type will be used when the placement of the pod is _crucial_.
+  - preferred: the placement of the pod is not as important as running the load itself. in case of a matching node not found, the scheduler will simply ignore node affinity rules and place the pod on any available node.
 - DuringExecution: a pod has been running and a change is made to the environment that affects node affinity (label of a node, for instance). these changes will not impact the node once they have been scheduled (provisioned?).
 
-![30](./assets/30.png)
+![30](./assets/030.png)
 
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: red
+  name: red
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: red
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: red
+    spec:
+      containers:
+      - image: nginx
+        name: nginx
+        resources: {}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: node-role.kubernetes.io/master
+                  operator: Exists
+###############################################################
+      labels:
+        app: blue
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: color
+                operator: In
+                values:
+                - blue
+      containers:
+      - image: nginx
+        imagePullPolicy: Always
+        name: nginx                   
+```
 
+- `kubectl get nodes <nodeName> --show-labels`
+- `kubectl label nodes <nodeName> <key>=<value>`
+- `kubectl scale deployment <depName> --replicas=<#>`
 
+### node affinity vs taints and toleration
 
+to ensure that pods go to a especific node, taints/toleration and nodeAffinity are used in combination.
 
+- nodes: taints and labels
+- pods: toleration and selectors
 
+### resource allocation
 
+scheduler takes into consideration the amount of resources each pod requires and those available on the nodes. if there are no more resources available, k8s avoids scheduling the pod - the pod will remain in pending state. checking the events will show the reason (insufficient cpu, memory...).
 
+- cpu: default 0.5 cpu*
+- mem: default 256 Mi*
+- disk
 
+*Minimum resource request
 
+default values can be modified on the pod/deployment-definition files. also, for the pod to pick up those defaults you must have first set those as default values for request and limit by creating a _LimitRange_ in that **namespace** (<https://kubernetes.io/docs/tasks/configure-pod-container/assign-memory-resource>):
 
+```yaml
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: mem-limit-range
+spec:
+  limits:
+  - default:
+      memory: 512Mi
+    defaultRequest:
+      memory: 256Mi
+    type: Container
+# https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-default-namespace/
+
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: cpu-limit-range
+spec:
+  limits:
+  - default:
+      cpu: 1
+    defaultRequest:
+      cpu: 0.5
+    type: Container
+# https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/cpu-default-namespace/
+```
+
+0.1 count of cpu can also be expressed as 100m. 1 count of cpu = 1 vcpu. docker container has no limit to the amount of resources it can consume on a node. unless otherwise specified, k8s limits containers to 1vcpu on the node. as regards mem, the default limit is set to 512 Mi
+
+under _containers_ add resources:
+
+```yaml
+spec:
+  containers:
+  - name: asdf
+    image: nginx
+    ports:
+      - containerPort: 8080
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: 1
+      limits:
+        memory: "2Gi"
+        cpu: 2
+```
+
+limits are set for each _container_ within the _pod_.
+
+execeeding the limits
+
+- cpu: k8s throttles the cpu so that it doesn't go beyond the specified limit
+- memory: containers can use more memory than its limit. if it _constantly_ tries to (and consumes?) consume more memory than it limits, the pod is terminated.
+
+With Deployments you can easily edit any field/property of the POD template. Since the pod template is a child of the deployment specification,  with every change the deployment will automatically delete and create a new pod with the new changes. So if you are asked to edit a property of a POD part of a deployment you may do that simply by running the command
+
+`kubectl edit deployment my-deployment`
+
+### Daemon sets
+
+daemon sets are similar to replica sets since they help in creating multiple instances of pods but they run a copy of the pod con each node of the cluster. whenever a new node is added to the cluster, a new pod is added to the node:
+
+![31](./assets/031.PNG)
+
+ds ensures that at least one copy of the pod is always present in all nodes in the cluster.
+
+ds perfect monitoring agent, logs viewer. DS are applied at the cluster lvl (?); also used for deploying kube-proxy, and networking
+
+ds-def.yml
+
+```yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: monitoring-daemon
+spec:
+  selector:
+    matchLabels:
+      app: monitoring-agent
+  template:
+    metadata:
+      labels:
+        app: monitoring-agent
+    spec:
+      containers:
+      - name: monitoring-agent
+        image: monitoring-agent
+```
+
+to describe a name space we have to specify the namespace: `--namespace=<nsName>`
+
+An easy way to create a DaemonSet is to first generate a YAML file for a Deployment with the command `kubectl create deployment elasticsearch --image=k8s.gcr.io/fluentd-elasticsearch:1.20 -n kube-system --dry-run=client -o yaml > fluentd.yaml`. Next, remove the replicas and strategy fields from the YAML file using a text editor. Also, change the kind from **Deployment** to **DaemonSet**.
+
+### static pods
+
+the kubelet relies on the kubeapi server for instruction on which pods to load on its node. we can configure the kubelet to create pods on the definition file stored on a directory `/etc/kubernetes/manifests`. it checks constantly to see if there are new files. kubelet can also restart the pod in case the pod crashes. if changes are made on the file, the pod is also updated. if the file is removed, the pod is deleted. these are static pods.
+
+no replica sets, nor daemonsets, nor services can be created this way. only pods.
+
+kubelet works at pod level and only understands pods.
+
+we can change the location of where pod are stored. we have to modify the kubelet service line that contains `--pod-manifest-path=<xxxx>`. we replace this line with an external yaml file to indicate where these files will be stored: `--config=kubeconfig.yaml`. on that file `staticPodPath: /etc/kubernetes/manifests`.
+
+kubeadm uses a similar architecture. it creates pods for each service, and they have -controlplane added to their name (rather than the typical static).
+
+when in a cluster, the kubelet can still create static pods, while receiving orders to create pods from the kubeapi. the api server will be able to see the static pod. when the kubelet creates a static pod, if part of a cluster, it also creates a mirrored object in the kubeapi server; when we check from the kubeapi server, we see a read-only image of the pod; we can view details of the pod, but we can't edit anything.
+
+![32](./assets/032.PNG)
+
+Run the command `ps -aux | grep kubelet` and identify the config file - `--config=/var/lib/kubelet/config.yaml`. _Then check in the config file for staticPodPath_.
+
+`kubectl run static-busybox --image=busybox --command sleep 1000 --dry-run=client --restart=Never -o yaml > file.yaml`
