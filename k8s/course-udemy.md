@@ -1031,3 +1031,39 @@ when in a cluster, the kubelet can still create static pods, while receiving ord
 Run the command `ps -aux | grep kubelet` and identify the config file - `--config=/var/lib/kubelet/config.yaml`. _Then check in the config file for staticPodPath_.
 
 `kubectl run static-busybox --image=busybox --command sleep 1000 --dry-run=client --restart=Never -o yaml > file.yaml`
+
+### multiple schedulers
+
+when creating a pod or deployment you can instruct k8s to have the pod scheduled by a specific scheduler. we can choose the scheduler name when creating it (**--scheduler-name=scheduler01**).
+
+![33](./assets/033.PNG)
+
+- leader-elect=true: choosing a leader who will have the final say.
+
+`schedulerName: <schedulerName>` - same level as containers under spec
+
+`kubectl get events`: lists all the events on the current nameSpace. to view the logs of the scheduler, we can check the logs of the pod: `kubectl logs my-custom-scheduler --name-space=kube-system`
+
+lab
+
+- `kubectl -n <nameSpace> get pods`
+- `kubectl -n <nameSpace> describe pods <podName>`
+- deploy additional scheduler: copy default /etc/kubernetes/manifests scheduler pod definition file. make these modifications: `leader-elect=false` and `--scheduler-name=<name>`; metadata: name: update the name| name of the container: update; kubectl create -f file.yaml.
+
+### configure scheduler
+
+kube adm:
+
+![34](./assets/034.PNG)
+
+additional schedulers
+
+![35](./assets/035.PNG)
+
+- <https://github.com/kubernetes/community/blob/master/contributors/devel/>
+- <https://github.com/kubernetes/community/blob/master/contributors/devel/sig-scheduling/scheduler.md>
+- <https://kubernetes.io/blog/2017/03/advanced-scheduling-in-kubernetes>
+- <https://jvns.ca/blog/2017/07/27/how-does-the-kubernetes-scheduler-work/>
+- <https://stackoverflow.com/questions/28857993/how-does-kubernetes-scheduler-work>
+
+## logging and monitoring

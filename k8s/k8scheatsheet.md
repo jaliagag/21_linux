@@ -8,6 +8,7 @@
 - `kubectl describe pods <name> | grep -i node`
 - `kubectl describe daemonsests --namespace=<nsName>`
 - `kubectl get pods -o wide`
+- `watch "kubectl get pods"`
 
 ## manage resources
 
