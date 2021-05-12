@@ -715,7 +715,7 @@ Annotations: build version, names, emails...
 - `kubectl get all --selector env=prod --no-headers | wc -l`
 - `kubectl get pod --selector env=prod,bu=finance,tier=frontend`
 
-### taints and tolertions
+### taints and tolerations
 
 pod to node relationship, what pod goes to what node. taints and tolerations are used to set restrictions on what nodes can pods be scheduled.
 
@@ -1298,3 +1298,144 @@ spec:
 - <https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/>
 - <https://kubernetes.io/docs/concepts/configuration/secret/#risks>
 - <https://www.vaultproject.io/>
+
+### multicontainer pods
+
+related instances on the same pod, several containers on the same pod. they are created together and destroyed together. they have the same lifecycle. they share network (they can reach each other via localhost), storage.
+
+```yaml
+spec:
+  containers:
+  - name: simple-web-app
+    image: simple-web-app
+  - name: log-agent
+    image: log-agent
+```
+
+2 containers will be deployed when provisioning this pod.
+
+3 multicontainer pod design:
+
+1. sidecar pattern
+2. adapter
+3. ambassador
+
+InitContainers: in a multi-contiainer pod, each container is expected to run a process that stays alive as long as the POD's lifecycle - if any of them fails, the POD restarts.
+
+at imes you may want to run a process that runs to completion in a container, that is a task that will be run only one time when the pod is first created, or a process that waits for an external service or database to be up before the actual app starts. that's where **initContainers** come in.
+
+a initContainer is configured in a pod like all othe rcontainers, except that it is specified inside a `initContainers` section:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp-pod
+  labels:
+    app: myapp
+spec:
+  containers:
+  - name: myapp-container
+    image: busybox:1.28
+    command: ['sh', '-c', 'echo The app is running! && sleep 3600']
+  initContainers:
+  - name: init-myservice
+    image: busybox
+    command: ['sh', '-c', 'git clone <some-repository-that-will-be-used-by-application> ; done;']
+```
+
+when a pod is first created the initContainer is run, and the process in the initContainer must run to a completion before the real container hosting the application starts. you can configure multiple such initContainers - in that case each init container is run _one at a time in sequential order_. if any of the initContainers fail to complete, k8s restarts the pod repeatedly until the init container succeeds:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp-pod
+  labels:
+    app: myapp
+spec:
+  containers:
+  - name: myapp-container
+    image: busybox:1.28
+    command: ['sh', '-c', 'echo The app is running! && sleep 3600']
+  initContainers:
+  - name: init-myservice
+    image: busybox:1.28
+    command: ['sh', '-c', 'until nslookup myservice; do echo waiting for myservice; sleep 2; done;']
+  - name: init-mydb
+    image: busybox:1.28
+    command: ['sh', '-c', 'until nslookup mydb; do echo waiting for mydb; sleep 2; done;']
+```
+
+k8s supports self-healing applications through ReplicaSets and Replication Controllers. The replication controller helps in ensuring that a POD is re-created automatically when the application within the POD crashes. It helps in ensuring enough replicas of the application are running at all times.
+
+Kubernetes provides additional support to check the health of applications running within PODs and take necessary actions through Liveness and Readiness Probes.
+
+## cluster maintenance
+
+take down nodes that are part of your cluster as part of maintenance purposes, kernel or software updates.
+
+say a node goes down - the pods are not accessible. if there are enough replicas, app may remain accesible. if the node came back online immediately, the kubelet process starts and the pods come back online. however if the node was down for more than five minites, the pods are terminated - k8s considers them _dead_.
+
+if the pod are part of a replica set then they are recreated on other nodes. the time it waits for a pod to come back online is known as the _pod eviction timeout_, and it's set in the control manager with a default value of 5 minutes `kube-controller-manager --pod-eviction-timeout=5m0s ...`. how long does the master node wait to consider the node dead.
+
+when the pod comes back online, it comes back without any pods scheduled on it. if we know that the upgrade might take longer than the scheduled time to come back, we can drain the node `kubectl drain <nodeName>` - workloads are moved to other nodes in the cluster (actually pods are terminated and recreated on the new node). the node is also marked as unschedulable until you remove the restriction. to allow pods to be scheduled on the node `kubectl uncordon <nodeName>`.
+
+the pods that were moved do not comeback immediately.
+
+`kubectl cordon <nodeName>`: marks the node as unschedulable, it doesn't terminate or moves the pods; simply new pods cannot be scheduled on the node.
+
+- `kubectl drain node01 --ignore-daemonsets` && `kubectl cordon node01`
+
+### k8s cluster versions
+
+`kubectl get nodes`
+
+k8s versions - v1.11.3
+
+| v1 | 11 | 3 |
+| ---- |---- |----|
+| major | minor | patch |
+| | features and functionalities |bug fixes |
+
+major release july 2015.
+
+coreDNS and ETCD cluster are separate projects
+
+<https://kubernetes.io/docs/concepts/overview/kubernetes-api/>
+
+Here is a link to kubernetes documentation if you want to learn more about this topic (You don't need it for the exam though):
+
+<https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md>
+
+<https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api_changes.md>
+
+k8s core components:
+
+- kube-apiserver
+- controller-manager
+- kube-scheduler
+- kubeclt
+- kube-proxy
+- kubectl
+
+all of these have to have the same version. components can belong to different release versions. none of the controllers should have a higher version than the api server:
+
+![41](./assets/041.PNG)
+
+k8s supports up to the 3 latest minor versions- recommended upgrade is one version at a time, do not jump minor versions.
+
+upgradaing a clusters consists of two steps
+
+1. upgrading your master nodes - while the master node is being upgraded, the control plane components (apiserver, scheduler...) go down briefly; worker nodes keep functioning normally. since the master is down all management functions are down; you can't access the cluster using kubectl or the api, no new apps...
+2. upgrading the worker nodes
+   1. upgrade them all at once, takes down the app - requires downtime
+   2. one at a time, load is moved to other nodes while the node is being updated
+3. add new nodes with the new software version and decommision old ones
+
+kubeadm upgrade
+
+- `kubectl upgrade plan` - information
+- `kubectl upgrade apply`
+
+**kubeadm does not install nor upgrades kubelets**. first we have to upgrade the kubeadm tool
