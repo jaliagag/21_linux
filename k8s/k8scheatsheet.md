@@ -17,6 +17,8 @@
 - delete pod: `kubectl delete pod webapp`
 - create yml from command: `kubectl run redis --image=redis123 --dry-run=client -o yml > <fileName>`
 - Update a single-container pod's image version (tag) to v4: `kubectl get pod mypod -o yaml | sed 's/\(image: myimage\):.*$/\1:v4/' | kubectl replace -f -`
+- `kubectl drain <nodeName>` also cordons it
+- `kubectl uncordon <nodeName>` gets the back into the pool to receive pods
 
 ## create docs
 
@@ -29,3 +31,5 @@
 - update `kubectl apply -f <yamlFile>.yaml` || `kubectl set image <depplyName> <contName-nginx>=<newImage-nginx:1.9.1`
 - status: `kubectl rollout status deployments <deploymentName>` || `kubectl rollout history deployments <deploymentName>`
 - rollback: `kubectl rollout undo deployments <deploymentName>`
+
+## upgrade k8s version

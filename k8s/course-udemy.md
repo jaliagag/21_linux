@@ -1435,7 +1435,133 @@ upgradaing a clusters consists of two steps
 
 kubeadm upgrade
 
-- `kubectl upgrade plan` - information
-- `kubectl upgrade apply`
+- `kubeadm upgrade plan` - information
+- `kubeadm upgrade apply`
 
-**kubeadm does not install nor upgrades kubelets**. first we have to upgrade the kubeadm tool
+**kubeadm does not install nor upgrades kubelets**. after we upgrade the control plane controllers we have to manually upgrade the kubelet version on each node. upgrande plan gives us the information to apply the upgrade on the nodes - but first we have to upgrade kubeadm on the cluster.
+
+```console
+apt upgrade -y kubeadm=1.12.0-00 <<<---upgrade kubeadm
+kubeadm upgrade plan <<<--- gives us the command to upgrade the cluster
+kubeadm upgrade apply v1.12.0 <<<--- upgrade the cluster
+```
+
+when we run `kubectl get nodes` we see the version of the kubelets registered on the api server, not the version of the api server itself. then we upgrade the kubelet on the **master** node
+
+```console
+apt upgrade -y kubelet=1.12.0-00
+systemctl restart kubelet
+```
+
+then the worker nodes will have kubelet upgraded. first we have to empty them:
+
+```console
+kubectl drain node1 <<<--- reschedule pod to other nodes and marks the node as unschedulable
+apt upgrade -y kubeadm=1.12.0-00
+apt upgrade -y kubelet=1.12.0-00
+kubeadm upgrade node ocnfig --kubelet-version v1.12.0
+systemctl restart kubelet
+kubectl uncordon node1
+```
+
+Demo
+
+```console
+##############
+##  MASTER  ##
+##   NODE   ##
+##############
+apt update
+apt-cache madison kubeadm <<<--- look for the latest version
+apt-mark unhold kubeadm && apt-get update && apt-get isntall -y kubeadm=1.19.0-00 && apt-mark hold kubeadm
+kubeadm version <<<--- should be updated
+sudo kubeadm upgrade plan <<<--- see actual version running and possible update
+sudo kubeadm upgrade appy v1.19.6 -y
+kubectl drain controlplane(masternodename) --ignore-daemonsets
+apt-mark unhold kubelet kubectl && apt-get update && apt-get install -y kubelet=1.19.6-00 kubectl=1.19.6-00 && apt-mark hold kubelet kubectl
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+kubectl get nodes <<<--- should see new version
+kubectl uncordon controlplane(masternodename)
+
+##############
+##  WORKER  ##
+##  NODES   ##
+##############
+apt-mark unhold kubeadm && apt-get update && apt-get install -y kubeadm=1.19.6-00 && apt-mark hold kubeadm
+sudo kubeadm upgrade node
+####
+kubectl drain node1 <<<--- from the control plane node
+####
+apt-mark unhold kubelet kubectl && apt-get updrate && apt-get install -y kubelet=1.19.6-00 && apt-mark hold kubelet kubectl
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+kubectl get nodes <<<--- should see new version
+kubectl uncordon nodes
+```
+
+Practice test
+
+```console
+apt update
+apt install kubeadm=1.19.0-00
+kubeadm upgrade apply v1.19.0
+apt install kubelet=1.19.0-00
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+
+#########
+solution
+#########
+apt install kubeadm=<version>(1.18.0-00)
+kubeadm upgrade apply v<version>(v1.18.0 - upgrade the cluster) 
+kubectl version --short (cluster version)
+apt isntall kubelet==<version>(1.18.0-00)
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+# node01
+apt install kubeadm=<version>(1.18.0-00)
+kubeadm upgrade node
+apt isntall kubelet==<version>(1.18.0-00)
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+```
+
+### BUR
+
+what to backup?
+
+- resource configuration: imperative or declarative files (preferred). store these files on github (also backedup). query kube-api server (best option for managed cluster). save all resource configuration: `kubectl get all --all-namespaces -o yaml > all-deployed-services.yaml`. VELERO
+- etcd cluster - all cluster related information is stored: state of the cluster, nodes and every other resources on the cluster. instead of backing up resources, you may choose to backup the ETCD server itself. the ETCD cluster is configured on the master node. while configuring it we specified a location where all the data will be stored (--data-dir=/var/lib/etcd). ETCD has a builtin backup solution `ETCDCTL_API=3 etcdctl snapshot save snapshot.db` - view status of the snapshot: `ETCDCTL_API=3 etcdctl snapshot status snapshot.db`. restoring:
+  - stop the kube api server service `service kube-apiserver stop` - we need to restart the etcd cluster and the kubeapi server depends on it.
+  - `ETCDCTL_API=3 etcdctl snapshot restore snapshot.db --data-dir /var/lib/etcd-from-backup` when restoring, etcdctl initialices a new cluster config and configures the members of etcd as new members in a new cluster. this is to prevent a new member from joining an existing cluster - on this example, the file at the end of the command is created. then we need to configure the etcd.servive to use that file as the new --data-dir.
+  - `systemctl daemon-reload`
+  - `service etcd restart`
+  - `service kube-apiserver start`
+- persistent storage:
+
+for all **etcdctl** snapshot commands we have to specify the --cacert, --cert and --key.
+
+To make use of etcdctl for tasks such as back up and restore, make sure that you set the ETCDCTL_API to 3.
+
+You can do this by exporting the variable ETCDCTL_API prior to using the etcdctl client. This can be done as follows:
+
+`export ETCDCTL_API=3`
+
+For example, if you want to take a snapshot of etcd, use: `etcdctl snapshot save -h` and keep a note of the mandatory global options.
+
+Since our ETCD database is TLS-Enabled, the following options are mandatory:
+
+- `--cacert`: verify certificates of TLS-enabled secure servers using this CA bundle
+- `--cert`: identify secure client using this TLS certificate file
+- `--endpoints=[127.0.0.1:2379]`: This is the default as ETCD is running on master node and exposed on localhost 2379.
+- `--key`: identify secure client using this TLS key file
+
+Similarly use the help option for snapshot restore to see all available options for restoring the backup: `etcdctl snapshot restore -h`
+
+```console
+root@controlplane:~# ETCDCTL_API=3 etcdctl snapshot save /opt/snapshot-pre-boot.db --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key
+Snapshot saved at /opt/snapshot-pre-boot.db
+###################################################
+root@controlplane:~# etcdctl snapshot restore /opt/snapshot-pre-boot.db --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key --data-dir=/var/lib/etcd-from-backup
+```
