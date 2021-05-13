@@ -1565,3 +1565,76 @@ Snapshot saved at /opt/snapshot-pre-boot.db
 ###################################################
 root@controlplane:~# etcdctl snapshot restore /opt/snapshot-pre-boot.db --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key --data-dir=/var/lib/etcd-from-backup
 ```
+
+### Solution
+
+First Restore the snapshot:
+
+root@controlplane:~# ETCDCTL_API=3 etcdctl  --data-dir /var/lib/etcd-from-backup \
+snapshot restore /opt/snapshot-pre-boot.db
+
+```console
+2021-03-25 23:52:59.608547 I | mvcc: restore compact to 6466
+2021-03-25 23:52:59.621400 I | etcdserver/membership: added member 8e9e05c52164694d [http://localhost:2380] to cluster cdf818194e3a8c32
+root@controlplane:~#
+```
+
+Note: In this case, we are restoring the snapshot to a different directory but in the same server where we took the backup (the controlplane node) As a result, the only required option for the restore command is the --data-dir.
+
+Next, update the /etc/kubernetes/manifests/etcd.yaml:
+
+We have now restored the etcd snapshot to a new path on the controlplane - /var/lib/etcd-from-backup, so, the only change to be made in the YAML file, is to change the hostPath for the volume called etcd-data from old directory (/var/lib/etcd) to the new directory /var/lib/etcd-from-backup.
+
+```yaml
+  volumes:
+  - hostPath:
+      path: /var/lib/etcd-from-backup
+      type: DirectoryOrCreate
+    name: etcd-data
+```
+
+With this change, /var/lib/etcd on the container points to /var/lib/etcd-from-backup on the controlplane (which is what we want)
+
+When this file is updated, the ETCD pod is automatically re-created as this is a static pod placed under the /etc/kubernetes/manifests directory.
+
+Note: as the ETCD pod has changed it will automatically restart, and also kube-controller-manager and kube-scheduler. Wait 1-2 to mins for this pods to restart. You can run a watch "docker ps | grep etcd" command to see when the ETCD pod is restarted.
+
+Note2: If the etcd pod is not getting Ready 1/1, then restart it by kubectl delete pod -n kube-system etcd-controlplane and wait 1 minute.
+
+Note3: This is the simplest way to make sure that ETCD uses the restored data after the ETCD pod is recreated. You don't have to change anything else.
+
+If you do change --data-dir to /var/lib/etcd-from-backup in the YAML file, make sure that the volumeMounts for etcd-data is updated as well, with the mountPath pointing to /var/lib/etcd-from-backup (THIS COMPLETE STEP IS OPTIONAL AND NEED NOT BE DONE FOR COMPLETING THE RESTORE)
+
+my notes
+
+- address to reach ETCD cluster from the controlplane --listen-client-urls=127.0.0.1:2379
+- server certificate: --cert-file=/etc/kubernetes/pki/etcd/server.crt
+- etcd ca cert: --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt
+
+`ETCDCTL_API=3 etcdctl snapshot save /opt/snapshot-pre-boot.db --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key`;
+`ETCDCTL_API=3 etcdctl --data-dir /var/lib/etcd-from-bur snapshot restore /opt/snapshot-pre-boot.db` - since it's the same server, only requires --data-dir arg
+
+edit etc kubernetes manifests etcd.yaml; we have restored the etcd snapshot to a new path on the control plane, so the only change to be made in the yaml file is to change the hostPath for the volume called etcd-data to the new dir
+
+Here's a quick tip. In the exam, you won't know if what you did is correct or not as in the practice tests in this course. You must verify your work yourself. For example, if the question is to create a pod with a specific image, you must run the the `kubectl describe pod` command to verify the pod is created with the correct name and correct image.
+
+- <https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#backing-up-an-etcd-cluster>
+- <https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/recovery.md>
+- <https://www.youtube.com/watch?v=qRPNuT080Hk>
+
+## security in k8s
+
+security primitives. the hosts that hold the cluster itself: all access to these hosts must be secured, root access disabled, password based access disabled (only ssh key authentication)...
+
+securing k8s components. kube-apiserver is at the center of all operation in k8s. controlling access to the kube-apiserver is the first line of defense. we need to make two types of decisions. who has access to the cluster and what can they do.
+
+1. who has access: it depends on the authentication method. username/passwd, username/token, certificates, external authentication (ldap), service accounts (for machines)
+2. what can they do: RBAC (users are associated to groups with certain permissions), ABAC (attributes), node authorization, webhook mode...
+
+All communication involving the kube-apiserver to the kublet, kube proxy, scheduler, controller manager, etcd cluster is secured using TLS encryption.
+
+communication between applications within the cluster: by default, all pods can access all other pods in the cluster. we can restrict access by using network policies.
+
+### authentication
+
+
