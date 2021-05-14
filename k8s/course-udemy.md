@@ -1757,7 +1757,7 @@ Once created, you may authenticate into the kube-api server using the users cred
 
 a certificate is used to certificate trust between 2 parties within a transaction, a user trying to access a web-server. TLS certificates ensure that the communication between the user and the server is encrypted and the server is who it says it is. we must encrypt the data using a encryption keys. the data is encrypted using a key which is basically a set of random numbers and letters; you add the random information to the data and you encrypt it to a format that cannot be recognized.
 
-the data is then sent to the server; when the server recieves the data, it is encrypted as well and cannot decrypt the data without the key. a copy of the key must also be sent to the server --> **symmetric encryption**. it is a secure way of encryption, It is a secure way of encryption but since it uses the same key to encrypt and decrypt the data and since the key has to be exchanged between the sender and the receiver there is a risk of a hacker gaining access to the key and decrypting the data.
+the data is then sent to the server; when the server recieves the data, it is encrypted as well and cannot decrypt the data without the key. a copy of the key must also be sent to the server --> **symmetric encryption**. it is a secure way of encryption, but since **_it uses the same key to encrypt and decrypt the data_** and since the key has to be exchanged between the sender and the receiver there is a risk of a hacker gaining access to the key and decrypting the data.
 
 that's where **asymmetric encryption** comes in. Instead of using a single key to encrypt and decrypt data, asymmetric encryption uses a pair of keys a private key and a public key.
 
@@ -1780,20 +1780,28 @@ So, we generate a public and private key pair _on the server_.
 
 Here we use the openssl command to generate a private and public key pair:
 
-- `openssl genrsa -out my-bank.key 1024`
-- `openssl rsa -in my-bank.ket -pubout > mybank.pem`
+- `openssl genrsa -out my-bank.key 1024` --> private key
+- `openssl rsa -in my-bank.ket -pubout > mybank.pem` --> public key
 
-And that’s how they look. When the user first accesses the web server using https, he gets the public key from the server. Since the hacker is sniffing all traffic that is assumed he too gets a copy of the public key.
+When the user first accesses the web server using https, he gets the public key from the server. Since the hacker is sniffing all traffic that is assumed he too gets a copy of the public key.
 
-In fact the user's browser then encrypts the symmetric key using the public key provided by the server. The symmetric key is now secure - the user then sends this to the server. The hacker also gets a copy. the server uses the private key to decrypt the message and retrieve the symmetric key from it.
+In fact the user's browser then encrypts the symmetric key using the public key provided by the server. The symmetric key is now secure - the user then sends this to the server. The hacker also gets a copy. the server uses the private key to decrypt the message and retrieve the symmetric key from it. However the hacker does not have the private key to decrypt and retrieve the symmetric key from the message it received. the hacker only has the public key with which he can only lock or encrypt a message and not decrypt the message. the symmetric key is now safely available only to the user and the server.
 
-However the hacker does not have the private key to decrypt and retrieve the symmetric key from the message it received. the hacker only has the public key with which he can only lock or encrypt a message and not decrypt the message. the symmetric key is now safely available only to the user and the server.
+| moment | action                                                                                        | server                   | user                                                      | hacker                                                                    |
+| ------ | --------------------------------------------------------------------------------------------- | ------------------------ | --------------------------------------------------------- | ------------------------------------------------------------------------- |
+| 0      | user tries to access webserver                                                                | sends public key + CA to user | receives server's public key                              | receives server's public key                                              |
+| 1      | browser encrypts the symmetric key using the public key provided by the server                |                          |                                                           |                                                                           |
+| 2      | user sends user's symmetric key and the server's public key                                   |                          | sends a packet with symmetric key and server's public key | receives same packet with symmetric key and public server key             |
+| 3      | the server uses the private key to decrypt the message and retrieve the symmetric key from it |                          |                                                           | hacker doesn't have the private key so he can't decrypt the symmetric key |
+| 4      | symmetric key is only available to the user and the server                                    |                          |                                                           |                                                                           |
 
-they can now use the symmetric key to encrypt data and send to each other the receiver can use the same symmetric key to decrypt data and retrieve information.
+<https://www.youtube.com/watch?v=pArLLJmgX10>
 
-The hacker is left with the encrypted messages and public keys with which he can decrypt any data with asymmetric encryption.
+![42](./assets/042.PNG)
 
-We have successfully transferred the symmetric keys from the user to the server and that's symmetric encryption.
+![43](./assets/043.PNG)
+
+they can now use the symmetric key to encrypt data and send to each other the receiver can use the same symmetric key to decrypt data and retrieve information. The hacker is left with the encrypted messages and public keys with which he CAN'T decrypt any data with asymmetric encryption. We have successfully transferred the symmetric keys from the user to the server and that's symmetric encryption.
 
 ```txt
 Perfect the hacker now looks for new ways to hack into our account and so he realizes that the only way he can get your credential is by getting you to type it into a form he presents. So he creates a Web site that looks exactly like your bank's web site. The design is the same. The graphics are the same. The Web site is a replica of the actual bank's Web site. He hosts the website on his own server. He wants you to think it's secure too. So he generates his own set of public and private key pairs and configure them on his web server.
@@ -1801,212 +1809,64 @@ Perfect the hacker now looks for new ways to hack into our account and so he rea
 And finally he somehow manages to tweak your environment or your network to route your requests going to your bank's web site to his servers. When you open up your browser and type the website address in you see a very familiar page the same login page of your bank that you're used to seeing.
 
 So you go ahead and type in the username and password. You made sure you typed in HTTPS in the URL to make sure that communication is secure encrypted your browser receives the key you send encrypted symmetric key and then you send your credentials encrypted with the key and the receiver decrypt the credentials with the same symmetric key you've been communicating securely in an encrypted manner but with the hackers server. As soon as you send in your credentials, you see a dashboard that doesn’t look very much like your bank's dashboard.
+```
 
-What if you could look at the key you received from the server and see if it is a legitimate key from the real bank server when the server since the key it does not send the key alone. It sends a certificate that has the key in it. If you take a closer look at the certificate you will see that it is like an actual certificate.
+What if you could look at the key you received from the server and see if it is a legitimate key from the real bank server. **when the server sends the key it does not send the key alone. It sends a certificate that has the key in it**. If you take a closer look at the certificate you will see that it is like an actual certificate.
 
 But in a digital format it has information about who the certificate is issued to, the public key of that server, the location of that server etc. every certificate has a name on it the person or subject to whom the certificate is issued to.
 
 That is very important as that is the field that helps you validate their identity.If this is for a web server this must match what the user types in the you are on his browser.
 
 If the bank is known by any other names and if they like their users to access their application with the other names as well then all those names should be specified in the certificate under the subject alternative name section.
-```
 
 But you see anyone can generate a certificate like this. You could generate one for yourself saying you're Google and that's what the hacker did in this case. He generated a certificate saying he is your bank's web site. So how do you look at a certificate and verify if it is legit. That is where the most important part of the certificate comes into play _who signed and issued the certificate_.
 
 If you generate the certificate then you will have to sign it yourself. That is known as a self-signed certificate. Anyone looking at the certificate you generated will immediately know that it is not a safe certificate because you have signed if you looked at the certificate you received from the hacker closely you would have noticed that it was a fake certificate that was signed by the hacker himself.
 
-As a matter of fact your browser does that for you.
+As a matter of fact your browser does that for you. All of the web browsers are built in with a Certificate validation mechanism, wherein the browser checks the certificate received from the server and validates it to make sure it is legitimate. if it identifies it to be a fake certificate then it actually warns you.
 
-All of the web browsers are built in with a Certificate validation mechanism, wherein the browser checks
+So then how do you create a legitimate certificate for your web servers that the web browsers will trust. How do you get your certificates signed by someone with **authority**. That’s where _Certificate Authorities or CAs_ comes in. They are well known organizations that can sign and validate your certificates for you. Some of the popular ones are Symantec, Digicert, Comodo, GlobalSign etc.
 
-the certificate received from the server and validates it to make sure it is legitimate if it identifies
+The way this works is you generate a **certificate signing a request or CSR** using the key you generated earlier and the domain name of your Web site. You can do this again using the open SSL command.
 
-it to be a fake certificate then it actually warns you.
+`openssl req -new -key my-bank.key -out my-bank.csr -subj "/C=US/ST=CA/O=MyOrg, Inc./CN=mydomain.com"`
 
-So then how do you create a legitimate certificate for your web servers that the web browsers will trust.
+This generates a my-bank.csr file which is the certificate signing request that should be sent to the CA for signing. It looks like this the certificate authorities verify your details and once it checks out they sign the certificate and send it back to you.
 
-How do you get your certificates signed by someone with authority.
+You now have a certificate signed by a CA that the process trust. if hacker tried to get his certificate signed the same way he would fail during the validation phase and his certificate would be rejected by the CA.
 
-That’s where Certificate Authorities or CAs comes in. They are well known organizations that can sign
+So the Web site that he's hosting won't have a valid certificate. The CAs use different techniques to make sure that you are the actual owner of that domain.
 
-and validate your certificates for you.
+You now have a certificate signed by CA that the browsers trust. But how do the browsers know that the CA itself was legitimate. For example what if the certificate was signed by a fake CA.
 
-Some of the popular ones are Symantec, Digicert, Comodo, GlobalSign etc.
+In this case our certificate was signed by Symantec. How would the browser know Symantec is a valid CA and that the certificate was infact signed by Symantec and not by someone who says they are semantec. The CA is themselves have a set of public and private key pairs. The CA is use their private keys to sign the certificates the public keys of all the CAs are built in to the browsers. The browser uses the public key of the CA to validate that the certificate was actually signed by the CA themselves.
 
-The way this works is you generate a certificate signing a request or CSR using the key you generated
+You can actually see them in the settings of your web browser, under certificates. They are under trusted CAs tab.
 
-earlier and the domain name of your Web site.
+Now these are public CAs that help us ensure the public websites we visit, like our banks, email etc are legitimate.
 
-You can do this again using the open SSL command.
+However they don't help you validate sites hosted privately say within your organization. For example, for accessing your payroll or internal email applications. For that you can host your own private CAs.
 
-This generates a my-bank.csr file which is the certificate signing request that should be
+Most of these companies listed here have a private offering of their services. A CA server that you can deploy internally within your company. You can then have the public key of your internal CA server installed on all your employees browsers and establish secure connectivity within your organization so let's summarize real quick.
 
-sent to the CA for signing.
+We have seen why you may want to encrypt messages being sent over a network to encrypt messages. We use asymmetric encryption with a pair of public and private keys and admin uses a pair of keys to secure SSH connectivity to the servers. The server uses a pair of keys to secure HTTPS traffic. For this the server first sends a certificate signing request to a CA. The CA uses its private key to sign the CSR. Remember all users have a copy of the CAs public key.
 
-It looks like this the certificate authorities verify your details and once it checks out they sign
+The signed certificate is then sent back to the server the server configure is the web application with the signed certificate. Whenever a user accesses the web application the server first sends the certificate with its public key.
 
-the certificate and send it back to you.
+The user or rather the user's browser reads the certificate and uses the CA's public key to validate and retrieve the servers. Public key it then generates a symmetric key that it wishes to use going forward for all communication. The symmetric key is encrypted using the server as public key and sent back to the server the server uses its private key to decrypt the message and retrieve the symmetric key. The symmetric key is used for communication going forward so the administrator generates a key pair for securing SSH. the web server generates a key pair for securing the web site with HTTPS, the Certificate Authority generates its own set of key pair to sign certificates.
 
-You now have a certificate signed by a CA that the process trust if hacker tried to get his certificate
+The end user though only generates a single symmetric key. Once he establishes trust with the Web site he uses his username and password to authenticate the Web server. with the servers key pairs the client was able to validate that the server is who they say they are but the server does not for sure know if the client is who they say they are. It could be a hacker impersonating a user by somehow gaining access to his credentials not over the network for sure as we have secured it already with TLS. May be some other means.
 
-signed the same way he would fail during the validation phase and his certificate would be rejected
+Anyway, So what can the server do to validate that the client is who they say they are. for this as part of the initial trust building exercise, The server can request a certificate from the client and so the client must generate a pair of keys and a signed certificate from a valid CA the client then sends the certificate to the server for it to verify that the client is who they say they are.
 
-by the CA.
+Now you must be thinking you have never generated a client's certificate to access a Web site. Well that's because TLS client certificates are not generally implemented on web servers; even if they are it's all implemented under the hood. So a normal user don't have to generate and manage certificates manually.
 
-So the Web site that he's hosting won't have a valid certificate.
+this whole infrastructure including the CA the servers the people and the process of generating distributing and maintaining digital certificates is known as public key infrastructure or PKI
 
-The CAs use different techniques to make sure that you are the actual owner of that domain.
+finally let me clear up something before you leave I've been using the analogy of a key and lock for private and public keys. If I give you the impression that only the lock or the public key can encrypt data then please forgive me as it's not true.
 
-You now have a certificate signed by CA that the browser is trust.
+These are in fact two related or paired keys. You can encrypt data with any one of them and only decrypt data with the other. You cannot encrypt data with one and decrypt with the same.
 
-But how do the browsers know that the CA itself was legitimate.
+So you must be careful what you encrypt your data with. If encrypted data with your private key then remember anyone with your public key, which could really be anyone out there, will be able to decrypt and read your message.
 
-For example what if the certificate was signed by a fake CA.
-
-In this case our certificate was signed by Symantec.
-
-How would the browser know Symantec is a valid CA and that the certificate was infact signed by Symantec
-
-and not by someone who says they are semantec. The CA is themselves have a set of public and private
-
-key pairs.
-
-The CA is use their private keys to sign the certificates the public keys of all the CAs are built in to
-
-the browsers. The browser uses the public key of the CA to validate that the certificate was actually
-
-signed by the CA themselves.
-
-You can actually see them in the settings of your web browser, under certificates. They are under trusted
-
-CAs tab.
-
-Now these are public CAs that help us ensure the public websites we visit, like our banks, email etc
-
-are legitimate.
-
-However they don't help you validate sites hosted privately say within your organization.
-
-For example, for accessing your payroll or internal email applications. For that you can host your own
-
-private CAs.
-
-Most of these companies listed here have a private offering of their services. A CA server that
-
-you can deploy internally within your company.
-
-You can then have the public key of your internal CA server installed on all your employees browsers
-
-and establish secure connectivity within your organization so let's summarize real quick.
-
-We have seen why you may want to encrypt messages being sent over a network to encrypt messages.
-
-We use asymmetric encryption with a pair of public and private keys and admin uses a pair of keys to
-
-secure SSH connectivity to the servers. The server uses a pair of keys to secure HTTPS traffic.
-
-For this the server first sends a certificate signing request to a CA.
-
-The CA uses its private key to sign the CSR.
-
-Remember all users have a copy of the CAs public key.
-
-The signed certificate is then sent back to the server the server configure is the web application with
-
-the signed certificate.
-
-Whenever a user accesses the web application the server first sends the certificate with its public
-
-key.
-
-The user or rather the user's browser reads the certificate and uses the CA's public key to validate
-
-and retrieve the servers.
-
-Public key it then generates a symmetric key that it wishes to use going forward for all communication.
-
-The symmetric key is encrypted using the server as public key and sent back to the server the server
-
-uses its private key to decrypt the message and retrieve the symmetric key.
-
-The symmetric key is used for communication going forward so the administrator generates a key pair
-
-for securing SSH.
-
-the web server generates a key pair for securing the web site with HTTPS, the Certificate Authority
-
-generates its own set of key pair to sign certificates.
-
-The end user though only generates a single symmetric key.
-
-Once he establishes trust with the Web site he uses his username and password to authenticate the Web
-
-server with the servers key pairs.
-
-The client was able to validate that the server is who they say they are but the server does not for
-
-sure know if the client is who they say they are.
-
-It could be a hacker impersonating a user by somehow gaining access to his credentials not over the
-
-network for sure.
-
-as we have secured it already with TLS. May be some other means. Anyway,
-
-So what can the server do to validate that the client is who they say they are for this as part of the
-
-initial trust building exercise.
-
-The server can request a certificate from the client and so the client must generate a pair of keys
-
-and a signed certificate from a valid CA the client then sends the certificate to the server for it
-
-to verify that the client is who they say they are.
-
-Now you must be thinking you have never generated a client's certificate to access a Web site.
-
-Well that's because TLS client certificates are not generally implemented on web servers even if
-
-they are it's all implemented under the hood.
-
-So in normal user don't have to generate and manage certificates manually so that was the final piece
-
-about client certificates this whole infrastructure including the CA the servers the people and the
-
-process of generating distributing and maintaining digital certificates is known as public key infrastructure
-
-or PKI finally let me clear up something before you leave I've been using the analogy of a key and
-
-law for private and public keys.
-
-If I give you the impression that only the lock or the public key can encrypt data then please forgive
-
-me as it's not true.
-
-These are in fact two related or paired keys.
-
-You can encrypt data with any one of them and only decrypt data with the other.
-
-You cannot encrypt data with one and decrypt with the same.
-
-So you must be careful what you encrypt your data with.
-
-If encrypted data with your private key then remember anyone with your public key which could really
-
-be anyone out there will be able to decrypt and read your message.
-
-Finally, a quick note on naming convention. Usually certificates with Public key are named crt or pem
-
-extension. So that’s server.crt,
-
-server.pem for server certificates or client.crt or client.pem for client certificates. And
-
-private keys are usually with extension .key, or –key.pem.
-
-For example server.key or server-key.pem. So just remember private keys have the word ‘key’
-
-in them usually either as an extension or in the name of the certificate and one that doesn't have the
-
-word key in them is usually a public key or certificate.
-
-
+Finally, a quick note on naming convention. Usually certificates with Public key are named crt or pem extension. So that’s server.crt, server.pem for server certificates or client.crt or client.pem for client certificates. And private keys are usually with extension .key, or –key.pem. For example server.key or server-key.pem. So just remember private keys have the word ‘key’ in them usually either as an extension or in the name of the certificate and one that doesn't have the word key in them is usually a public key or certificate.
