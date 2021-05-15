@@ -33,3 +33,7 @@
 - rollback: `kubectl rollout undo deployments <deploymentName>`
 
 ## upgrade k8s version
+
+## certificates
+
+- to check the information on a .crt file: `openssl x509 -in /etc/kubernetes/pki/apiserver.crt -text -noout`
