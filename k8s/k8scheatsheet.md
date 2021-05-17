@@ -19,6 +19,7 @@
 - Update a single-container pod's image version (tag) to v4: `kubectl get pod mypod -o yaml | sed 's/\(image: myimage\):.*$/\1:v4/' | kubectl replace -f -`
 - `kubectl drain <nodeName>` also cordons it
 - `kubectl uncordon <nodeName>` gets the back into the pool to receive pods
+- run ad hoc command on container: `kubectl exec -it ubuntu-sleeper -- date -s '19 APR 2012 11:14:00'`
 
 ## create docs
 
@@ -37,3 +38,7 @@
 ## certificates
 
 - to check the information on a .crt file: `openssl x509 -in /etc/kubernetes/pki/apiserver.crt -text -noout`
+
+## secrets
+
+- `kubectl create secret docker-registry private-reg-cred --docker-username=dock_user --docker-password=dock_password --docker-server=myprivateregistry.com:5000 --docker-email=dock_user@myprivateregistry.com`

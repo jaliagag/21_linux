@@ -2231,7 +2231,163 @@ resources are categorized as namespaced or cluster-scoped. cluster-scoped when y
 
 ![052](./assets/052.PNG)
 
-- namespaced resources: `kubectl api-resources --namespaced=true`
-- cluster-scoped resources: `kubectl api-resources --namespaced=false`
+- full list of namespaced resources: `kubectl api-resources --namespaced=true`
+- full list of cluster-scoped resources: `kubectl api-resources --namespaced=false`
 
-authorizing users to cluster wide resources: cluster roles and cluster role bindings.
+authorizing users to cluster wide resources: cluster roles and cluster role bindings. like roles but for cluster scoped resources
+
+we have to create a cluster role binding to link the user to the role
+
+![053](./assets/053.PNG)
+
+![054](./assets/054.PNG)
+
+`kubectl create -f cluster-role-binding.yaml`
+
+you can create a cluster role for namespaced resources as well. the user will have access to these resources accross all namespaces
+
+### image security
+
+image names: `image: nginx`; docker image naming conventions.
+
+| registry | user/account | image/repository |
+| ------- | ----- |------- |
+| docker.io (assumed by default) | nginx/ | nginx |
+| gcr.io (google) | kubernetes-e2e-test-images | dnsutils|
+
+private registry - following docker way of doing things, we need to first log into our docker registry: `docker login private-registry.io` + credentials. run images: `docker run|pull private-registry.io/apps/internal-app` - for a pod def file, we would use the full path.
+
+as regards authentication for the docker runtime. we need to create a secret object with the credentials in it
+
+![055](./assets/055.PNG)
+
+- `kubectl create secret docker-registry private-reg-cred --docker-username=dock_user --docker-password=dock_password --docker-server=myprivateregistry.com:5000 --docker-email=dock_user@myprivateregistry.com`
+
+```yaml
+containers:
+- image: myprivateregistry.com:5000/nginx:alpine
+  imagePullPolicy: IfNotPresent
+  name: nginx
+imagePullSecrets:
+- name: private-reg-cred
+```
+
+### security contexts
+
+we can define security standards, id of the user, linux capability: `docker run --user=1001 ubuntu sleep 3600 | --cap-add MAC_ADMIN ubuntu`... these can be defined in k8s as well. settings can be configured at a container or pod level. configuration at pod level will carry over to all containers in the pod. if both are configured, settings on the containter will overwrite the pod settings for the container.
+
+```yaml
+# configuration at a pod level
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web-pod
+spec:
+  jjjj
+  containers:
+  - name: ubuntu
+    image: ubuntu
+    command: ["sleep","3600"]
+# configuration at a container level
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web-pod
+spec:
+  containers:
+  - name: ubuntu
+    image: ubuntu
+    command: ["sleep","3600"]
+    securityContext:
+      runAsUser: 1000
+      capabilities: # only supported at container level and not at the POD level
+        add: ["MAC_ADMIN"]
+```
+
+### network policy
+
+- traffic: ingress and egress.
+
+![056](./assets/056.PNG)
+
+![057](./assets/057.PNG)
+
+- network security: pods should be able to talk to each other, all can reach other via ips, svcs or names. All allow by default. svcs to allow communication between pods; we can implement a policy to prevent the front end pod to gain access to the db.
+- a **network policy** is a k8s object - you link a network policy to one or more pod; you can define one or more rules within a network policy. allow ingress traffic coming from one pod - this policy only applies to whatever pod it is applied to - how do we apply the policy? similar to assigning replica sets to pods: labels and selectors
+
+![058](./assets/058.PNG)
+
+![059](./assets/059.PNG)
+
+![060](./assets/060.PNG)
+
+not all networking solution support network policies (flannel doesn't) - some that do: calico, romana, kube-router, weave-net...
+
+### developing network policies
+
+first we need to block everything from going in and out from the pod
+
+```yaml
+# assign policy to pod
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: db-policy
+spec:
+  podSelector:
+    matchLables:
+      role: db
+  policyTypes:
+  - Ingress
+  ingress:
+  - from: 
+    - podSelector:  # rule 1
+        matchLabels:
+          name: api-pod
+      namespaceSelector:
+        matchLabels:
+          name: prod
+    - ipBlock:      # rule 2
+        cidr: 192.168.5.10/32
+    ports:
+    - protocol: TCP
+      port: 3306
+```
+
+there are 2 rules - if either one of them is ok, the traffic is allowed; in case of the first rule, traffic will be allowed if both specification are ok (podSelector AND namespaceSelector).
+
+if we create an Ingress policy, it enables traffic to return through the same road (?); we must consider the direction from where the request originates, no need to worry about the response.
+
+![061](./assets/061.PNG)
+
+```yaml
+# egress example
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: db-policy
+spec:
+  podSelector:
+    matchLables:
+      role: db
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          name: api-pod
+    ports:
+    - protocol: TCP
+      port: 3306
+  egress:
+  - to:
+    - ipBlock:
+      cidr: 
+    ports:
+      - protocol: TCP
+        port: 80
+```
+
+## storage
