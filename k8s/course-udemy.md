@@ -2391,3 +2391,33 @@ spec:
 ```
 
 ## storage
+
+### storage on docker
+
+storage drivers and volume drivers
+
+how docker stores data on the local fs. docker creates a folder structure under **/var/lib/docker**. where docker stores data by default (images, containers...).
+
+layered architecture: each line of architecture creates a new layer in the image. each layer stores the changes of the previous layer
+
+![062](./assets/062.PNG)
+
+once the docker image is completed, the files that make up that image become read only and cannot be modified. to make modifications we need to build a new container.
+
+when we run a container using **docker run**, docker creates a container based on these layers and creates a new writable layer on top of these layers. on this layer is that modified information is stored. when the container is destroyed, all the modified information is destroyed. the same image layer is shared with all containers created using this image.
+
+![063](./assets/063.PNG)
+
+we can modify the files on the read only/image layer; if we do that, docker creates a copy of the file on the container/read-write layer and we will be modifying a different version of the file --> **copy-on-write**. the image will be remain the same until we rebuild the image.
+
+persist data (since once the container is removed, it's content is also removed): **persistent _volumes_**. `docker volume create <nameOfTheVolume>` - this creates a folder under the /var/lib/docker/volumes/_nameOfTheVolume_. we can mount the volume when running the image: `docker run -v <nameOfTheVolume>:<locationInsideContainer> <image>` - `docker run -v data_volume:/var/lib/mysql mysql`. this will create a new container and mount the data volume into the indicated location inside the container - all data written on the DB is in fact being written on the volume on the docker host. if the container is destroyed, the data is still persistent. --> **volume mount**
+
+there's no need to actually create the volume before hand, we can just add the -v option and docker will create the volume. there's also no need to create it under the default /var/lib/docker directory; we can specify the full path on the docker host (where we want to create the volume): `docker run -v /data/mysql:/var/lib/mysql mysql` --> **bind mount** (which means mounting any directory on the docker host on the container).
+
+the -v option is old school - the new way of doing this is: `docker run --mount type=bind,source=/data/mysql,target=/var/lib/mysql mysql`.
+
+docker uses storage drivers to enable layered architecture - AUFS, ZFS, BTRFS, Device Mapper, Overlay, Overlay2. docker will choose the best storage driver available automatically based on the OS. different drivers offer different perfomance and stability.
+
+storage drivers help managing storage and containers. to create persistant storage, we need to create volumes. volume are not handled by storage drivers - they are handled by volume drivers/plugins. the default volume driver plugin is `Local`; it helps create a volume on the docker host and store it's data under /var/lib/docker/volume. there are besides other third party solutions: Azure File Storage, Convoy, DigitalOcean Block Storage, Flocker, gce-docekr, GluterFS, NetApp, RexRay, Portworx, VMware vSphere Storage.
+
+we can specify the volume driver when running a container: `docker run -it --name mysql --volume-driver rexray/ebs --mount src=ebs-vol,target=/var/lib/mysql mysql` data will remain on the clound once we exit.
