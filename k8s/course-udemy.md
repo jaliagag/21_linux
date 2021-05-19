@@ -2606,3 +2606,129 @@ spec:
     requests:
       storage: 50Mi
 ```
+
+![065](./assets/065.PNG)
+
+### storage class
+
+- static provisioning: manually provisioning a volume/disk on a node/cloud.
+- dynamic provisioning: with storage classes we can define a provisioner and attach that when the claim is made.
+
+![066](./assets/066.PNG)
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: google-storage
+provisioner: kubernetes.io/gce-pd
+```
+
+![067](./assets/067.png)
+
+![068](./assets/068.png)
+
+this replaces the pv file; the provisioner creates it for us (we still need it but it is automatically created/provisioned by the storage class). there are specific parameters that we can specify depending on our requirements. we can create different definition files for each class that we want.
+
+```yaml
+root@controlplane:~# cat 7.yaml 
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+        name: local-pvc
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: local-storage
+  resources:
+    requests:
+      storage: 500Mi
+```
+
+The Storage Class called local-storage makes use of VolumeBindingMode set to WaitForFirstConsumer. This will delay the binding and provisioning of a PersistentVolume until a Pod using the PersistentVolumeClaim is created
+
+```yaml
+# root@controlplane:~# cat 7.yaml 
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: local-pvc
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: local-storage
+  resources:
+    requests:
+      storage: 500Mi
+
+#root@controlplane:~# 
+# root@controlplane:~# cat 11.yaml 
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx:alpine
+    name: nginx
+    volumeMounts:
+    - mountPath: "/var/www/html"
+      name: local-pvc    
+  volumes:
+  - name: local-pvc
+    persistentVolumeClaim:
+      claimName: local-pvc
+#root@controlplane:~#
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: delayed-volume-sc
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+```
+
+## networking
+
+### linux networking basics
+
+switch: create a network through a switch, for that we need a network interface `ip link` - assign ip to link `ip addr add 192.168.1.11/24 dev wlp3s0`.
+
+a router helps connecting two networks (connects to the switch)
+
+![069](./assets/069.png)
+
+how does a system know where another system is on the network? that is why we configure the systems with a _gateway_, or route. a door to the outside world, to other networks or the internet. the systems need to know where that door is located. to see existing routing configuration `route` command. routing table. example on how to add a route `ip route add 192.168.2.0 via 192.168.1.1`.
+
+access to the internet - instead of adding each network ip to the routing table we can configure that any network that you don't know the route to, use a specific router -- **default gateway**.
+
+linux host as a router
+
+![070](./assets/070.png)
+
+if pinging does not return a "network unreachable" message, routing is fine, but in linux, by default, packets are not forwarded from one interface to the next (security reasons). this is configured on `/proc/sys/net/ipv4/ip_forward` if 0, no packet forwarding, if 1, packet forwarding is enabled. this is not a persistent change - we need to modify the `/etc/sysctl.conf - net.ipv4.ip_forward = 1`.
+
+```console
+ip link
+ip addr
+ip route
+route
+ip addr add <ip>/<range> dev <ip link name>
+cat /proc/sys/net/ipv4/ip_forward
+```
+
+### dns config
+
+`/etc/hosts` --> dns. whatever we input on /etc/hosts is the source of truth for the host. name resolution means translating names into actual ip addresses.
+
+DNS host - centrally manages the name resolution. all hosts use that server for name resolution (all configuration is hosted on /etc/hosts?). how to point our host to a dns server - `/etc/resolv.conf` (where we configure the dns server that will be used by the host). add an entry to the file with the dns server ip addr - `nameserver <ip>`, should be configured on all hosts. we still can hardcode/configure hosts under /etc/hosts.
+
+the host first looks for the address on the etc-hosts file; then on the etc-resolv.conf file. that order can be changed. it is defined on the /etc/nsswitch.conf `hosts:          files mdns4_minimal [NOTFOUND=return] dns` - files means etc-hosts; dns means the dns server.
+
+we can add on the dns server an entry that is default: `Forward All to 8.8.8.8`.
+
+| www. | google. | com |
+| --- |---- |----- |
+| subdomain (mail, drive, maps, www...) | domain name | top level domain - the purpose of the webpage |
