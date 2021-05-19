@@ -2421,3 +2421,188 @@ docker uses storage drivers to enable layered architecture - AUFS, ZFS, BTRFS, D
 storage drivers help managing storage and containers. to create persistant storage, we need to create volumes. volume are not handled by storage drivers - they are handled by volume drivers/plugins. the default volume driver plugin is `Local`; it helps create a volume on the docker host and store it's data under /var/lib/docker/volume. there are besides other third party solutions: Azure File Storage, Convoy, DigitalOcean Block Storage, Flocker, gce-docekr, GluterFS, NetApp, RexRay, Portworx, VMware vSphere Storage.
 
 we can specify the volume driver when running a container: `docker run -it --name mysql --volume-driver rexray/ebs --mount src=ebs-vol,target=/var/lib/mysql mysql` data will remain on the clound once we exit.
+
+### container storage interface (cri)
+
+standard that defines how an orchestration solution like k8s would communicate with container runtimes (docker, rkt, cri-o). new containers can work independently of k8s but adhere to this standard.
+
+to extend support to different network solutions, we have container network interface - CNI (weaveworks, flannel, cilium) standard.
+
+CSI container storage interface (porworx, amazon EBS, dell, glusterFS) was develop to provide multiple storage solution. with CSI we can develop our own storage solutions for our own storage to work with k8s. this is not a k8s specific standard. it is meant to be an universal standard.
+
+CSI defines a set of RPCs (remote procedure calls) that will be called by the container orchestrator - these must be implemented by the stg drivers.
+
+![064](./assets/064.png)
+
+### volumes
+
+docker containers are meant to be transient in nature. last for a short period of time. destroyed once finished; the same happens to the data inside the container. to persist data, we attach a volume to the container when they are created. the data is persistent on the volume.
+
+in k8s, the pods created are transient as well. data gets deleted when the the container dies. to make data persistent, we attach a volume to the pod. the data generated is stored in the volume and remains.
+
+when we create a volume we can choose to store the volume in different ways. for instance, using a directory on the host:
+
+```yaml
+# pod def file  
+spec:
+  containers:
+  - image: alpine
+    name: alpine
+    #we have to mount the directory on the container
+    volumeMounts:
+    - mountPath: /opt
+      name: data-volume
+  volumes:
+  - name: data-volume
+    hostPath:
+      path: /data
+      type: Directory
+  # this works fine on a single node cluster, not recommended when
+  # there are several nodes since the pod would use each node's /data  dir
+  # and they might (will) not have the same information
+```
+
+for multinode cluster there are several storage solution (NFS, cloud...). for aws ebs:
+
+```yaml
+  volumes:
+  - name: data-volume
+    awsElasticBlockStore:
+      volumeID: <volume-id>
+      fsType: ext4
+```
+
+### persistent volumes
+
+on a large environment, instead of having volumes defined on pod (object?) definition files, we can create a large pool of storage to allow users to use the parts that they need: **Persistent volumes (PVs)**. a persistent volume is a cluster wide pool of storage volumes configured by an admin to be used to deploy apps on the cluster. users can select storage using **persistent volume claims (PVCs)**.
+
+pv def file
+
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-vol1
+spec:
+  accessModes:  # defines how a volume should be mounted on the host.
+    - ReadWriteOnce   # ReadOnlyMany | ReadWriteMany
+  capacity:     # amount of storage reserverd for the volume
+    storage: 1Gi
+  hostPath:     # <<<--- do not use this option on prod environment
+    path: /tmp/data
+# kubectl create -f <file>.yaml
+```
+
+`kubectl get persistentvolume`
+
+### persistent volume claim
+
+to make storage available to a node. pvs and pvcs are 2 separate objects. admin creates PVs and user/app owner creates PVCs to use the storage. once pvcs are created, k8s binds the pvs to the claims based on the request and properties set on the volume. every pvc is bound to a single volume (pv).
+
+during the binding process, k8s tries to find a PV that has
+
+- sufficient capacity
+- access modes
+- volume modes
+- storage class
+- selector
+- ...
+
+if there multiple matches for a claim and we want to make a specific choice, we can use labels and selectors to bind to the right volumes.
+
+there is a one-one relationship between PVs and PVCs - if we create a pvc that is smaller than the pv, no other claims can use the reamining unallocated space on the pv. if there are no pv available, the pvc will remain in a _pending_ state until new pv are created (it will automatically attach the pending pvc to the new pv).
+
+```yaml
+# pvc
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: myclaim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Mi
+# kubectl create -f <file>.yaml
+```
+
+`kubectl get persistentvolumeclaim` status either pending or bound. `kubectl delete persistentvolumeclaim <persistentvolumeclaim>`. if we delete the pvc, the pv will, by default remain existing: `persistentVolumeReclaimPolicy: Retain`; the persistent volume will remain until it's manually deleted. it is not available to reuse by any other pvcs. another option is **Delete** to automatically delete de pv when the claim is deleted. third option is **Recycle**, the data in the data volume will be scrubbed before making it available to other claims.
+
+Once you create a PVC use it in a POD definition file by specifying the PVC Claim name under persistentVolumeClaim section in the volumes section like this:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mypod
+spec:
+  containers:
+    - name: myfrontend
+      image: nginx
+      volumeMounts:
+      - mountPath: "/var/www/html"
+        name: mypd
+  volumes:
+    - name: mypd
+      persistentVolumeClaim:
+        claimName: myclaim
+```
+
+The same is true for ReplicaSets or Deployments. Add this to the pod template section of a Deployment on ReplicaSet.
+
+<https://kubernetes.io/docs/concepts/storage/persistent-volumes/#claims-as-volumes>
+
+- `kubectl exec webapp -- cat /log/app.log`
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: webapp
+spec:
+  containers:
+  - name: event-simulator
+    image: kodekloud/event-simulator
+    env:
+    - name: LOG_HANDLERS
+      value: file
+    volumeMounts:
+    - mountPath: /log
+      name: log-volume
+
+  volumes:
+  - name: log-volume
+    hostPath:
+      # directory location on host
+      path: /var/log/webapp
+      # this field is optional
+      type: Directory
+```
+
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-log
+spec:
+  persistentVolumeReclaimPolicy: Retain
+  accessModes:
+    - ReadWriteMany
+  capacity:
+    storage: 100Mi
+  hostPath:
+    path: /pv/log
+# pvc
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: claim-log-1
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Mi
+```
