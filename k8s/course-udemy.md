@@ -2700,7 +2700,7 @@ a router helps connecting two networks (connects to the switch)
 
 ![069](./assets/069.png)
 
-how does a system know where another system is on the network? that is why we configure the systems with a _gateway_, or route. a door to the outside world, to other networks or the internet. the systems need to know where that door is located. to see existing routing configuration `route` command. routing table. example on how to add a route `ip route add 192.168.2.0 via 192.168.1.1`.
+how does a system know where another system is on the network? that is why we configure the systems with a _gateway_, or route. a door to the outside world, **to other networks or the internet**. the systems need to know where that door is located. to see existing routing configuration `route` command. routing table. example on how to add a route `ip route add 192.168.2.0 via 192.168.1.1`.
 
 access to the internet - instead of adding each network ip to the routing table we can configure that any network that you don't know the route to, use a specific router -- **default gateway**.
 
@@ -2732,3 +2732,58 @@ we can add on the dns server an entry that is default: `Forward All to 8.8.8.8`.
 | www. | google. | com |
 | --- |---- |----- |
 | subdomain (mail, drive, maps, www...) | domain name | top level domain - the purpose of the webpage |
+
+Record types
+
+| A | web-server | 192.168.1.1|
+| ---- | ----- |-----|
+| AAAA | web-server | 2001:0db8:85a3:0000:0000:8a2e:0370:7334 |
+| CNAME | food.web-server | eat.web-server.hungry.web-server |
+
+to test dns - `nslookup <webpage>`; `dig <webpage>` returns more results.
+
+### coreDNS
+
+- `wget https://github.com/coredns/coredns/releases/download/v1.4.0/coredns_1.4.0_linux_adm64.tgz`
+- `tar -xzvf coredns_1.4.0_linux_amd64.tgz`
+- `./coredns` --> this s tarts the DNS server; by default listens on port 53
+
+CoreDNS loads it's configuration from a file named Corefile.
+
+![071](./assets/071.png)
+
+- <https://github.com/kubernetes/dns/blob/master/docs/specification.md>
+- <https://coredns.io/plugins/kubernetes/>
+
+### network namespaces
+
+used in docker to implement network isolation. on a linux host, we can create a namespace: `ip netns add red|blue` view namespaces `ip netns`. view specific ns nics | run specific command within a ns: `ip netns exec red ip link` or `ip -n red link`.
+
+arp table: protocol to resolve ip addresses to MAC addresses (physical address of the device - globally unique #). whenever a device needs to communicate with another device on a LAN, it needs the MAC address for that device. devices use ARP to acquire the MAC address for that device. an IP address is used to locate a device on a network and the MAC is what identifies the actual device.
+
+to find the MAC address, a computer (say A) will first look at its internal list, ARP cache, to see if the IP address for another computer (say B) already has a matching MAC address.
+
+computer A will send a broadcast message on the network asking everydevice which computer has the specific IP address and will ask for its MAC address. the computer that has the matching IP address will respond back and reveal its MAC address. once computer A has compt B MAC address, communication can flow between the 2.
+
+computer A stores the MAC address on its ARP cache. makes a network more efficient - stores IP to MAC address association.
+
+2 types of ARP entries:
+
+- Dynamic: created automatically when a device sends out a broadcast message out on the network requesting a MAC address; they are _not_ permanent and they are flushed periodically.
+- Static: someone manually enters an IP to MAC address association using the ARP command `arp -s <ipAddress> <MACAddress>`. used to avoid unnecessary broadcast traffic
+
+connecting namespaces via a virtual cable (or pipe) with 2 interfaces on either end. to "create the cable" `ip link add veth-red type veth peer name veth-blue` (links created are **veth-red** and **veth-blue** - to delete de cable we can delete just one of the links and the virtual cable dies entirely `ip -n red link del veth-red`); then we need to attach each nic to the appropriate ns: `ip link set veth-red netns red` (the same for blue). assign ip address: `ip -n red addr add 192.168.15.1/24 dev veth-red` and `ip -n blue addr add 192.168.15.2/24 dev veth-blue` - bring links up `ip -n <nsName> link set <linkName-veth-blue> up`. ns can reach each other `ip netns exec red ping 192.168.15.2`. checking ARP table: `ip netns exec red arp`.
+
+how do we enable all ns to communicate with each other (say we have more than 2). we need to create a virtual switch connecting the network. we can use several tools like _linux bridge_ or _open vswitch_.
+
+with linux bridge, to create an internal virtual bridge network we add a new virtual link to the host: `ip link add v-net-0 type bridge`. bring it up `ip link set dev v-net-0 up`. namespaces can now connect to this virtual switch. connecting namespaces to the virtual switch
+
+- `ip link add veth-red type veth peer name veth-red-br`
+- `ip link set veth-red netns red`
+- `ip link set veth-red-br master v-net-0`
+- `ip -n red addr add 192.168.0.17/24 dev veth-red`
+- `ip -n red link set veth-red up`
+
+connection through the host: add an ip addr to the link we created for the switch `ip addr 192.168.0.10/24 dev v-net-0`
+
+adding NAT functionality to the host: `iptables -t nat -A POSTROUTING -s 192.168.15.0/24 -j MASQUERADE`
