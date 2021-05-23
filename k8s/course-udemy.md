@@ -2787,3 +2787,194 @@ with linux bridge, to create an internal virtual bridge network we add a new vir
 connection through the host: add an ip addr to the link we created for the switch `ip addr 192.168.0.10/24 dev v-net-0`
 
 adding NAT functionality to the host: `iptables -t nat -A POSTROUTING -s 192.168.15.0/24 -j MASQUERADE`
+
+### cluster networking
+
+all nodes must have a nic, a host-name, a unique MAC (careful when cloning). ports that need to be open.
+
+- master: needs to accept connections on 6443 (kube-api).
+- kubelets on master and worker nodes listen on port 10250
+- kube-scheduler needs port 10251
+- kube-controller needs port 10252
+- etcd server: 2379
+- etcd needs addtional port 2380 so different etcd clients can communicate with each other
+- worker nodes expose services for external access on ports 30000-32767 
+
+```console
+ip link
+ip addr
+ip addr add 192.168.1.10/24 dev eth0
+ip route
+ip route add 192.168.1.10/24 via 192.168.2.1
+cat /proc/sys/net/ipv4/ip_forward # should say 1
+arp
+netstat -plnt
+route
+```
+
+- <https://kubernetes.io/docs/concepts/cluster-administration/addons/>
+- <https://kubernetes.io/docs/concepts/cluster-administration/networking/#how-to-implement-the-kubernetes-networking-model>
+
+In the CKA exam, for a question that requires you to deploy a network addon, unless specifically directed, you may use any of the solutions described in the link above.
+
+However, the documentation currently does not contain a direct reference to the exact command to be used to deploy a third party network addon.
+
+The links above redirect to third party/ vendor sites or GitHub repositories which cannot be used in the exam. This has been intentionally done to keep the content in the Kubernetes documentation vendor-neutral.
+
+At this moment in time, there is still one place within the documentation where you can find the exact command to deploy weave network addon:
+
+- <https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/high-availability/#steps-for-the-first-control-plane-node>
+
+```console
+ip r # look for default
+netstat -natulp | grep kube-scheduler
+netstat -natulp | grep etcd | grep LISTEN
+```
+
+### pod networking
+
+k8s expects that each pod receives:
+
+- it's own unique IP addr
+- every pod should be able to communicate with every other pod in the same node
+- every pod should be able to communicate with every other pod on the other nodes without NAT
+
+how to do this on our own:
+
+```console
+ip link add v-net-0 type bridge
+ip link set dev v-net-0 up
+ip addr add 192.168.15.5/24 dev v-net-0
+ip link add veth-red type veth peer name veth-red-br
+ip link set veth-red netns red
+ip -n red addr add 192.168.15.1 dev veth-red
+ip -n red link set veth-red up
+ip link set veth-red-br master v-net-0
+ip netns exec blue ip route add 192.168.1.0/24 via 192.168.15.5
+iptables -t nat -A POSTROUTING -s 192.168.15.0/24 -j MASQUERADE
+```
+
+when containers are created k8s creates namespaces. to enable connection between them we attach these ns to a network - which one? bridge network; we need to create a bridge network on each node
+
+`ip link add v-net-0 type bridge`
+
+and then bring them up
+
+`ip link set dev v-net-0 up`
+
+attach an ip addr to the bridge network
+
+`ip addr add 10.244.1.1/24 dev v-net-0` on another node 10.244.2.1 and 10.244.3.1
+
+each container
+
+```sh
+# create veth pair
+ip link add ...
+# attach veth pair
+ip link set ...
+ip link set ...
+# assign ip address
+ip -n <namespace> addr add ...
+ip -n <namespace> route add ...
+# bring up interface
+ip -n <namespace> link set ...
+```
+
+at this stage, pods can reach each other; now we have to enable communication across nodes.
+
+add a route on node1 to route traffic via the second node's ip
+
+`node1$ ip route add <destination-pod-ip> via <node-ip>`
+
+![072](./assets/072.PNG)
+
+rather than using individual node networking configurations, a better solution would be to a routing table on the router.
+
+|network|gateway|
+|---|---|
+|10.244.1.0/24|192.168.1.11|
+|10.244.2.0/24|192.168.1.12|
+|10.244.3.0|192.168.1.13|
+
+to reach private network `<network-column>` go through `<node-ip>`. 
+
+this "makes up" a large network - 10.244.0.0/16. ponele.
+
+so this was manually work - CNI is supposed to do this for us. we need to follow CNI standards. it tells us that we need to have an ADD) section and a DEL) section
+
+```sh
+ADD)
+  ip -n <namespace> link set ...
+DEL)
+  ip link del ...
+```
+
+the kubelet on each node is reponsible for creating containers; whenever container is created, the kubelet looks at `--cni-conf-dir=/etc/cni/net.d` config file and identifies the script; then it looks at the `--cni-bin-dir=/etc/cni/bin` and then our script is executed `./net-script-sh add <container> <namespace>`
+
+where do we specify the cni component to be used? kubelet
+
+```console
+ps aux | grep kubelet
+ls /opt/cni/bin
+ls /etc/cni/net.d
+```
+
+`cat /etc/cni/net.d/10-bridge.conf` this config follows cni configuration:
+
+- **isGateway**: should bridged network get an ip address?
+- **ipMasq**: add NAT rule?
+- **ipam**: where we specify the subnet and range of ip addresses
+
+### weave cni
+
+weave deploys an agent on the nodes. each agent, or peer, stores a topology of the entire setup; they know the nodes and ips of the other nodes. weave creates its own bridge networks and assigns ip addresses to each network
+
+`kubectl exec <podname> ip route`
+
+a pod can be connected to several bridged networks.
+
+when a pod is trying to reach another pod on another node, weave intercepts that packet and identifies that it's on a separate network; it then encapsulates this packet into a new with a new source and destination and sends it across the network; on the other side, the weave agent intercepts the packet decapsulates it and delivers the packet to the right pod
+
+weave can be deployed as daemons/services on each node or k8s can deploy it as pods on the cluster
+
+```console
+kubeclt apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')
+kubectl get pods -n kube-system
+kubectl logs <weave-pod-name> weave -n kube-system
+```
+
+- all binaries of CNI supported plugins: `/opt/cni/bin`
+- `ls /etc/cni/net.d`
+
+### ipam
+
+ip address management. how are virtual bridge networks in the nodes assigned an ip subnet and how are the pods assigned an ip, where this information is stored.
+
+the cni plugin has to take care of assigning ip addresses to the pods. cni has 2 built-in plugins we can use for this task.
+
+- dhcp
+- host-local
+
+we still have to invoke either of those plugins. we can also make this dynamic. the cni config file has a section called ipam where we can specify the type of plugin to be used:
+
+```conf
+{
+  "cniVersion": "0.2.0",
+  "name": "mynet",
+  "type": "net-script",
+  "bridge": "cni0"
+  "isGateway": true,
+  "ipMasq": true,
+  "ipam": {
+    "type": "host-local"
+    "subnet": "10.244.0.0/16",
+    "routes": [
+      {"dst": "0.0.0.0/0"}
+    ]
+  }
+}
+```
+
+weave by default allocates the ip addresses 10.32.0.0/12 for the entire network. the peers decide to split the ip addresses and assigns each portion to a node. pods created on each node will have a portion of that range.
+
