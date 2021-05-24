@@ -2788,6 +2788,45 @@ connection through the host: add an ip addr to the link we created for the switc
 
 adding NAT functionality to the host: `iptables -t nat -A POSTROUTING -s 192.168.15.0/24 -j MASQUERADE`
 
+### docker networking
+
+when you run a container there are different networking options.
+
+- none: the container doesn't have a network. container not attached to a network, can't reach the outside world, and no one from the outside can reach it - `docker run --network none nginx`
+- host: the container is attached to the host's network `docker run --network host nginx`. if we deploy an app on the container on port 80, the host can reach it using localhost:80. if we deploy a second instance with the same port, it won't work and the container will crash. two processes cannot listen on the same port at the same time
+- bridge: an internal private network is created which the docker host and containers attach to. the network has by default an address 172.17.0.0 and each device get their own internal private address within the network. when docker is installed on the host, it creates an internal private network called bridge (`docker network ls`). on the host, this network is called **docker0** (but docker calls it _bridge_). docker does something similar to what we do when we do "ip link add docker0 type bridge". the network starts as down.
+this bridge network is like an interface to the host, but for the containers within the host it's more like a _switch_. the interface docker0 gets an ip 172.17.0.1. whenever a container is created, docker creates a network namespace for it (see namespaces `ip netns`).
+
+`docker inspect <contID>`
+
+how does docker attach the container to the bridge network? (container and namespace mean the same thing). it creates as virtual cable with 2 interfaces on each end. one end attached to the bridge adapter and one end attached to the docker container
+
+![074](./assets/074.png)
+
+`ip -n <contID> addr` view container ip.
+
+interface pairs can be identified using their numbers (odd and even form a pair).
+
+port mapping: to allow external users access to apps hosted on containers, docker provides a port mapping option. tell docker to map port 8080 on the host to port 80 on the container `docker run -p 8080:80 nginx` (on the host `curl http://localhost:8080`). docker does this by modifying the iptables:
+
+![075](./assets/075.png)
+
+see rules: `iptables -nvL -t nat`
+
+### CNI - container networking interface
+
+standard sollution for container networking --> bridge (program or script) `bridge add <contID> <bridgenetwork|namespace>` - container runtime will use this config as default.
+
+CNI: set of standards that define a set of standards about how programs should be developped to solve networking challenges in a container runtime environment. programs are called _plugins_. bridge would be a plugin for cni. also cni defines how cont runtime should invoke plugins.
+
+![076](./assets/076.png)
+
+docker does not implement cni standards, it uses its own standards: CNM (container network model)
+
+we can create a docker container without networking and then attack it to the bridge network (this is how k8s does it):
+
+![077](./assets/077.png)
+
 ### cluster networking
 
 all nodes must have a nic, a host-name, a unique MAC (careful when cloning). ports that need to be open.
