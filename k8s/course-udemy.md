@@ -2788,7 +2788,7 @@ connection through the host: add an ip addr to the link we created for the switc
 
 adding NAT functionality to the host: `iptables -t nat -A POSTROUTING -s 192.168.15.0/24 -j MASQUERADE`
 
-### cluster networking
+### cluster networking
 
 all nodes must have a nic, a host-name, a unique MAC (careful when cloning). ports that need to be open.
 
@@ -2798,7 +2798,7 @@ all nodes must have a nic, a host-name, a unique MAC (careful when cloning). por
 - kube-controller needs port 10252
 - etcd server: 2379
 - etcd needs addtional port 2380 so different etcd clients can communicate with each other
-- worker nodes expose services for external access on ports 30000-32767 
+- worker nodes expose services for external access on ports 30000-32767
 
 ```console
 ip link
@@ -2887,7 +2887,7 @@ add a route on node1 to route traffic via the second node's ip
 
 `node1$ ip route add <destination-pod-ip> via <node-ip>`
 
-![072](./assets/072.PNG)
+![072](./assets/072.png)
 
 rather than using individual node networking configurations, a better solution would be to a routing table on the router.
 
@@ -2897,7 +2897,7 @@ rather than using individual node networking configurations, a better solution w
 |10.244.2.0/24|192.168.1.12|
 |10.244.3.0|192.168.1.13|
 
-to reach private network `<network-column>` go through `<node-ip>`. 
+to reach private network `<network-column>` go through `<node-ip>`.
 
 this "makes up" a large network - 10.244.0.0/16. ponele.
 
@@ -2978,3 +2978,41 @@ we still have to invoke either of those plugins. we can also make this dynamic. 
 
 weave by default allocates the ip addresses 10.32.0.0/12 for the entire network. the peers decide to split the ip addresses and assigns each portion to a node. pods created on each node will have a portion of that range.
 
+```console
+ls /etc/cni/net.d/ # checking networking solution
+ifconfig # interface created by cni
+kubectl exec -ti <podName> -- sh # log into pod
+ip r # default gateway
+```
+
+### service networking
+
+when a service is created, it is accesible by all pods in the cluster -- _clusterIP_ service.
+
+_nodePort_ service: besides being accesible by other pod, this kind of service exposes the application on a port on all nodes on the cluster.
+
+everytime we create a service, kube-proxy is involved. services are not created/assigned to a node, they are cluster wide objects. services are just virtual objects, they don't have ns, nics, services...
+
+when we create a service, it is assigned an ip from an ip range. the kube-proxy gets the ip address and creates forwarding rules on each node in the cluster. any traffic should go to XX pod. once in place, whenever a pod tries to reach the ip of the service, it is forwarded to the pod's ip address, which is accessible from every node in the cluster.
+
+kube-proxy creates the rules through userspace (kube-proxy listens on a port for each service and proxy's connection to the pod), ipvs or iproutes.
+
+`kube-proxy --proxy-mode [userspace | iptables | ipvs ] ...`
+
+range for service IPs is specified on `kube-api-server --service-cluster-ip-range ipNet` - default is 10.0.0.0/24
+
+to see the actual config: `ps aux | grep kube-api-server`
+
+see rules created by kube-proxy: `iptables -L -t net | grep db-service`
+
+![073](./assets/073.png)
+
+according to this output, traffic going to ip 10.103.132.104:3306 should be redirected to 10.244.1.2:336
+
+we can check the logs to see what kube-proxy does when creating the rules: `cat /var/log/kube-proxy.log`
+
+```console
+kubectl -n kube-system logs <pod> -c weave | grep ipalloc-range
+cat /etc/kubernetes/manifests/kube-apiserver.yaml | grep cluster-ip-range
+kubectl logs kube-proxy-gsw6z -n kube-system | egrep -i "userspace|ipvs|iptables|firewalld"
+```
