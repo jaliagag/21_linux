@@ -3082,4 +3082,305 @@ k8s doesn't create an entry for pod to map pod names to their ip addresses; it d
 
 k8s deploys a dns server within the cluster. previous to version 1.12, it was called kube-dns; after this version the recommended server is coredns.
 
-the coredns server is deployed as a pod
+the coredns server is deployed as a pod in the kube-system namespace - a replica set with 2 pods (for redundancy); a replica set withing a deployment. this coredns pod runs the coredns executable. coredns requires a configuration file `/etc/coredns/<file>`. whithin the file we have plugins configured (in orange):
+
+![080](./assets/080.png)
+
+in the kubernetes plugin is where the top level domain of the cluster is set - in this case, cluster.local.
+
+the pods section is responsible for creating a record for pods in the cluster (converting ips into the dash format) - it is disabled but we can enable it by adding `pods insecure`.
+
+Any record that this DNS server can’t solve (for example say a POD tries to reach www.google.com) it is forwarded to the nameserver specified in the coredns pods /etc/resolv.conf file. _The /etc/resolv.conf file is set to use the nameserver from the kubernetes Node_. Also note, that this core file is passed into the pod has a configMap object. That way if you need to modify this configuration you can edit the ConfigMap object.
+
+`kubectl get configmap -n kube-system`
+
+We now have the coredns pod up and running using the appropriate kubernetes plugin. It watches the kubernetes cluster for new PODs or services, and every time a pod or a service is created it adds a record for it in its database.
+
+Next step is for the pod to point to the coreDNS server. What address do the PODs use to reach the DNS server? When we deploy CoreDNS solution, It also creates a service to make it available to other components within a cluster. The service is named `kube-dns` by default. _The IP address of this service is configured as nameserver on the PODs_.
+
+Now you don’t have to configure this yourself. The DNS configurations on PODs are done by kubernetes automatically when the PODs are created.
+
+Want to guess which kubernetes component is responsible for that? The kubelet.
+
+If you look at the config file of the kubelet (`cat /var/lib/kubelet/config.yaml`) you will see the IP of the DNS server and domain in it. Once the pods are configured with the right nameserver, you can now resolve other pods and services. You can access the web-service using just web-service, or web-service.default or web-service.default.svc or web-service.default.svc.cluster.local.
+
+You can access the web-service using just web-service, or web-service.default or web-service.default.svc or web service.default.svc.cluster.local. If you try to manually lookup the web-service using nslookup or the host command web-service command, it will return the fully qualified domain name of the web-service, which happens to be web-service.default.svc.cluster.local. will return the fully qualified domain name of the web-service, which happens to be web-service.default.svc.cluster.local.
+
+But you didn't ask for that you just set up service. So how did it look up for the full name. It so happens, the resolv.conf file also has a search entry which is set to default.svc.cluster.local as well as svc.cluster.local and cluster.local.
+
+This allows you to find the service using any name. web-service or web-service.default or web-service.default.svc.
+
+However, notice that it only has search entries for service . So you won’t be able to reach a pod the same way. For that you need to specify the full FQDN of the pod:
+
+![081](./assets/081.png)
+
+```console
+kubectl -n kube-system get svc
+kubectl -n kube-system describe deployments.apps coredns
+kubectl describe configmap coredns -n kube-system
+```
+
+### ingress
+
+svc vs ingress
+
+![082](./assets/082.png)
+
+![083](./assets/083.png)
+
+ingress controller - not deployed by default.
+
+- gce -- supported by k8s
+- ngninx -- supported by k8s
+- istio
+- traefik
+
+ingress controller is deployed as another deployment.
+
+![084](./assets/084.png)
+
+also add at the same level of args
+
+```yaml
+  env:
+  - name: POD_NAME
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.name
+  - name: POD_NAMESPACE
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.namespace
+  ports:
+  - name: http
+    containerPort: 80
+  - name: https
+    containerPort: 443
+```
+
+then the service to expose the ingress controller to the world - a nodeport svc:
+
+![085](./assets/085.png)
+
+to do this we also need a service account with the correct set of permissions.
+
+![086](./assets/086.png)
+
+summary:
+
+- deployment of nginx ingress controller
+- service
+- configMap
+- Auth
+
+then creating ingress resources - a set of rules applied on the ingress controller. for instance, forwarding traffic to a single application or route traffic to different apps based on the URL, route based on the domain... again the ingress resource is created with a definition file
+
+```yaml
+# ingress-wear.yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-wear
+spec:
+  backend:
+    serviceName: wear-service
+    servicePort: 80
+```
+
+`kubectl get ingress`
+
+rules are used to route traffic when there are several services. rules are at the top of each domain name (?) and within each rule we have different paths based on the url.
+
+configuring ingress resources in k8s. we are trying to create a rule with 2 paths
+
+```yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-wear-watch
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /wear
+        backend:
+          serviceName: wear-service
+          servicePort: 80
+      - path: /wear
+        backend:
+          serviceName: watch-service
+          servicePort: 80
+```
+
+![088](./assets/088.png)
+
+ingress resource example using domain names:
+
+```yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-wear-watch
+spec: 
+  rules:
+  - host: wear.my-online-store.com
+    http:
+      paths:
+      - backend:
+          serviceName: wear-service
+          servicePort: 80
+  - host: watch.my-online-store.com
+    http:
+      paths:
+      - backend:
+          serviceName: watch-service
+          servicePort: 80
+```
+
+since we have 2 domain names we create 2 rules (previously 1 rule for 2 paths). if we do not use the host field, k8s will default to a star, all the incoming traffic to that rule without matching the host name.
+
+![087](./assets/087.png)
+
+```console
+kubectl edit ingress --namespace app-space
+```
+
+### annotations and rewrite-target
+
+Different ingress controllers have different options that can be used to customise the way they work. NGINX Ingress controller has many options that can be seen here.
+
+Our watch app displays the video streaming webpage at `http://<watch-service>:<port>/`. Our wear app displays the apparel webpage at `http://<wear-service>:<port>/`
+
+We must configure Ingress to achieve this. When a user visits the URL on the left, the request should be forwarded internally to the URL on the right. Note that the /watch and /wear URL paths are what we configure on the ingress controller so we can forward users to the appropriate application in the backend. The applications don't have this URL/Path configured on them:
+
+- `http://<ingress-service>:<ingress-port>/watch` --> `http://<watch-service>:<port>/`
+- `http://<ingress-service>:<ingress-port>/wear` --> `http://<wear-service>:<port>/`
+
+Without the rewrite-target option, this is what would happen:
+
+- `http://<ingress-service>:<ingress-port>/watch` --> `http://<watch-service>:<port>/watch`
+- `http://<ingress-service>:<ingress-port>/wear` --> `http://<wear-service>:<port>/wear`
+
+Notice that watch and wear at the end of the target URLs. The target applications are not configured with /watch or /wear paths. They are different applications built specifically for their purpose, so they don't expect /watch or /wear in the URLs. And as such the requests would fail and throw a 404 not found error.
+
+To fix that we want to "ReWrite" the URL when the request is passed on to the watch or wear applications. We don't want to pass in the same path that user typed in. So we specify the rewrite-target option. This rewrites the URL by replacing whatever is under rules->http->paths->path which happens to be /pay in this case with the value in rewrite-target. This works just like a search and replace function. For example: replace(path, rewrite-target) - In our case: replace("/path","/")
+
+```yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: test-ingress
+  namespace: critical-space
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /pay
+        backend:
+          serviceName: pay-service
+          servicePort: 8282
+```
+
+In another example given here, this could also be: replace("/something(/|$)(.*)", "/$2")
+
+```yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+  name: rewrite
+  namespace: default
+spec:
+  rules:
+  - host: rewrite.bar.com
+    http:
+      paths:
+      - backend:
+          serviceName: http-svc
+          servicePort: 80
+        path: /something(/|$)(.*)
+```
+
+```yaml
+#controlplane $ cat ingress-controller.yaml 
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingress-controller
+  namespace: ingress-space
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: nginx-ingress
+  template:
+    metadata:
+      labels:
+        name: nginx-ingress
+    spec:
+      serviceAccountName: ingress-serviceaccount
+      containers:
+        - name: nginx-ingress-controller
+          image: quay.io/kubernetes-ingress-controller/nginx-ingress-controller:0.21.0
+          args:
+            - /nginx-ingress-controller
+            - --configmap=$(POD_NAMESPACE)/nginx-configuration
+            - --default-backend-service=app-space/default-http-backend
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          ports:
+            - name: http
+              containerPort: 80
+            - name: https
+              containerPort: 443
+#controlplane $ 
+#controlplane $ cat svc.yaml 
+# kubectl -n ingress-space expose deployment ingress-controller --name ingress --port 80 --target-port 80 --type NodePort --dry-run=client -o yaml > lefile.yam
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress
+  namespace: ingress-space
+spec:
+  type: NodePort
+  selector:
+    name: nginx-ingress
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 30080
+#controlplane $
+#controlplane $ cat resource-ingress.yaml 
+apiVersion: extensions/v1beta1
+# apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: ingress
+  namespace: app-space
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /wear
+        backend:
+          serviceName: wear-service
+          servicePort: 8080
+      - path: /watch
+        backend:
+          serviceName: video-service
+          servicePort: 8080
+#controlplane $
+```
