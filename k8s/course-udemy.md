@@ -3055,3 +3055,31 @@ kubectl -n kube-system logs <pod> -c weave | grep ipalloc-range
 cat /etc/kubernetes/manifests/kube-apiserver.yaml | grep cluster-ip-range
 kubectl logs kube-proxy-gsw6z -n kube-system | egrep -i "userspace|ipvs|iptables|firewalld"
 ```
+
+### cluster DNS
+
+nslookup, dig... dns resolution within the cluster. k8s desploys a builtin dns server by default when we set up the cluster. we don't care much about nodes, we focus on services and pods.
+
+whenever a service is created, the k8s dns service creates a record for the service; it maps the service name to the ip address. so within the cluster, every pod can reach the service using it's name. this is the case if service and pod are on the same namespace.
+
+if there are multiple namespaces, we would need the name and it's namespace (web-service --> name of the service, apps--> name of the namespace)
+
+![078](./assets/078.png)
+
+web-service.apps --> this is a subdomain. all the services are grouped together into another subdomain called `svc`. the dns server keeps a record also about the namespaces (subdomains, we are calling them). all pods and services for a namespace are grouped together within a subdomain; all services are further grouped together into another subdomain called svc. so we can reach the service with the subdomain `web-service.apps.svc`.
+
+furthermore, all services and pods are grouped together into a root domain for the cluster: `cluster.local`. we can access the service using: `web-service.apps.svc.cluster.local` --> this is the FQDN for the service.
+
+![079](./assets/079.png)
+
+what about pods? records for pods are not created by default. we can enable record cretion by defult. it does not use the pod's name, rather the pod's ip replacing dots with dashes - `192.168.0.1` --> `192-168-0-1`. type is set to pod, rather than to svc.
+
+`cluster-local` is the root domain.
+
+### coredns in k8s
+
+k8s doesn't create an entry for pod to map pod names to their ip addresses; it does do that for services (svc to ip). for pods, k8s forms hostnames with the ip addresses, replacing dots with dashes.
+
+k8s deploys a dns server within the cluster. previous to version 1.12, it was called kube-dns; after this version the recommended server is coredns.
+
+the coredns server is deployed as a pod
