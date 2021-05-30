@@ -19,6 +19,13 @@ sudo vi /etc/hostname
 sudo vi /etc/hosts
 ```
 
+## epel release is broken
+
+fix this file `/etc/yum.repos.d/epel.repo` by either
+
+- uncomment commented line (#baseurl) and comment metalink line
+- sudo sed -i "s/mirrorlist=https/mirrorlist=http/" /etc/yum.repos.d/epel.repo
+
 ## set static IP
 
 <https://www.techrepublic.com/article/how-to-configure-a-static-ip-address-in-centos-7/>
@@ -152,19 +159,23 @@ ssh-copy-id dockmaster@`<ip>`
 
 ### APACHE
 
+```console
 sudo apt install apache2 -y
 sudo ufw app list
 sudo ufw allow in "Apache"
 sudo ufw status
 sudo ufw enable
 curl `<IP SERVER ADDRESS>`
+```
 
 ### MYSQL
 
+```console
 sudo apt install mysql-server
 sudo mysql_secure_installation
 SELECT PASSWORD STRENGTH
+```
 
 ### PHP
 
-sudo apt install php libapache2-mod-php php-mysql
+`sudo apt install php libapache2-mod-php php-mysql`

@@ -3384,3 +3384,121 @@ spec:
           servicePort: 8080
 #controlplane $
 ```
+
+## design and install k8s cluster
+
+- kube api listes on 6443; use a load balancer to split traffic between several master nodes. they can both be active at the same time
+- scheduler/controller manager: between the 2 nodes, one must be active and the other on standby. leader-elect
+  - kube-controller-manager: when the controller manager is configured we can specify `kube-controller-manager --leader-elect true [other options]`. when the process starts, it tires to gain a lease and lock the kube-controller-manager endpoint - the process that first updates the endpoint with its information becomes the active; the other becomes passive. the active controller holds the lease according to the duration specified on the `--leader-elect-lease-duration 15s` config (default is 15). the active process renews the lease according to the config of `--leader-elect-renew-deadline 10s` (default). by default processes try to become leaders every 2s: `--leader-elect-retry-period 2s`
+  - the scheduler has similar command line options
+- ETCD: there are 2 topologies: 1) the etcd is part of the master nodes -- stacked topology (easier to setup, easier to manage, fewer servers, _risk during failures_) 2) etcd is separated from the control plane nodes and run on their own set of servers -- external ETCD topology (less risky, harder to setup, more servers). ETCD usually listens on port 2379
+
+the kube-api server is the only one that talks to etcd - there is a configuration on the kube-api server specification: `cat /etc/systemd/system/kube-apiserver.service | grep etcd-servers` - as a list if there are several etcd servers.
+
+### etcd in HA
+
+information is stored in the form of files or pages; each individual file contains all the information related to the object it describes/stores. changes to one file does not affect the others.
+
+distributed - accross different servers holding the same information. we can read and write on any server that the information must be the same, same consistent copy of the data at the same time.
+
+with reads, information is the same across nodes. as regards writes - only one instance is responsible of writing the data and the replicating it. one node becomes the leader and the other nodes become workers. if the request to write is sent through a worker node, the worker node sends the request to the leader, who then replicates the data.
+
+selection of the leader through the RAFT protocol. raft algorythm uses random timers for initiating requests. a random timer is kicked off on the three managers; the first one to finish the timer sends out a request to the other nodes for permissions to be the leader; the other managers, on receivin the request, responde with their vote and the node assumes the leader role.
+
+as elected as leader, it sends out notifications at regular intervals to other masters informing them that it is continuing to assume the role of the leader. in case the other nodes do not receive a notification from the leader (leader is down or loosing network connectivity) the nodes initiate a new election process among themselves and a new leader is elected.
+
+a write request arrives to the leader who processes it and replicates it to other nodes in the cluster. the write request is considered to be completed only when it has been replicated on the other ETCD nodes. the etcd cluster is HA - even if we lose a node, it can still function; if a new write request comes in and an etcd instnace is unavailable - the write is considered to be complete when the write was replicated on _most_ instances of the cluster (2/3, write is completed). when there is quorum, the minimum number of nodes that need to be available for the cluster to function (total number of nodes/2 +1). if there are 2 instances, the quorum is 2 - if one instance fails, the write request won't be process since there is no quorum. so a minimum HA ETCD topology requires 3 instances and then on, **odd numbers** (preferred in case there is in place network segmentation).
+
+when the node that was down comes back up, the data is replicated to the node.
+
+```console
+wget -q --https-only "https://github.com/coreos/etcd/releases/download/v3.3.9/etcd-v3.3.9-linux-amd64.tar.gz"
+tar -xvf etcd-v3.3.9-linux-amd64.tar.gz
+mv etcd-v3.3.9-linux-amd64.tar.gz/etcd* /usr/local/bin/
+mkdir -p /etc/etcd /var/lib/etcd
+cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/
+```
+
+then configure the etcd service:
+
+![089](./assets/089png)
+
+use the `etcdctl` utility to store and retrieve data. there are to etcdctl version, v2 (default) and v3 (we'll use 3 - `export ETCDCTL_API=3`). `etcdctl put name john` create data; `etcdctl get name` retrieve data; `etcdctl get / --prefix --keys-only` get all keys
+
+kubernetes the hard way: <https://www.youtube.com/watch?v=uUupRagM7m0&list=PL2We04F3Y_41jYdadX55fdJplDvgNGENo>; <https://github.com/mmumshad/kubernetes-the-hard-way>
+
+## kubernetes the kubeadm way
+
+1. several nodes (1 master, 2 nodes)
+2. install container runtime - docker
+3. install kubeadm on all the nodes
+4. initialize master server
+5. deploy the pod network
+6. join nodes to he master
+
+- vagrant file: <https://github.com/kodekloudhub/certified-kubernetes-administrator-course>
+- docu <https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/>
+
+needs vagrant and virtual box
+
+```console
+git clone https://github.com/kodekloudhub/certified-kubernetes-administrator-course
+vagrant status
+vagrant up
+vagrant ssh <nodeName>
+lsmod | grep br_netfilter ****(if no result)****
+sudo modprobe br_netfilter ****(on all nodes)****
+****(create new kernel parameters on all nodes)****
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+EOF
+sudo sysctl --system
+sudo apt-get update && apt-get install -y apt-transport-https ca-certificates curl software-properties-common gnupg2
+curl -fsSl https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+sudo-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+sudo apt-get update && apt-get install -y containerd.io=1.2.13-1 docker-ce=5:19.03.8~3-0~ubuntu-$(lsb_release -cs) docker-ce-cli=5:19.03.8~3-0~ubuntu-$(lsb_release -cs)
+cat > /etc/docker/daemon.json <<EOF
+{
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m"
+  },
+  "storage-driver": "overlay2"
+}
+EOF
+mkdir -p /etc/systemd/system/docker.service.d
+systemctl daemon-reload
+systemctl restart docker
+systemctl status docker
+sdo apt-get update && sudo apt-get install -y apt-transport-https curl
+sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+sudo apt-get update
+sudo apt-get install -y kubelet kubeadm kubectl
+sudo apt-mark hold kubelet kubeadm kubectl
+```
+
+- <https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/>
+- <https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/>
+
+```console
+****only on the master****
+kubeadmin init --pod-network-cidr 10.244.0.0/16 --apiserver-advertise-address=192.168.56.2
+****regular user****
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown #(id -u):$(id -g) $HOOME/.kube/config
+****copy kubeadm join command****
+****deploy network solution****
+kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+****run join command on each worker nodes****
+```
+
+<https://www.weave.works/docs/net/latest/install/installing-weave/>
+
+```console
+sudo curl -L git.io/weave -o /usr/local/bin/weave
+sudo chmod a+x /usr/local/bin/weave
+```
