@@ -3530,6 +3530,38 @@ check selectors on the def file and the ones running on the pod
 kubectl get pod
 kubectl describe pod <pod-name>
 kubectl logs <pod-name> -f --previous ****to check the logs when it failed****
+kubectl -n gamma get ep
 ```
 
 <https://kubernetes.io/docs/tasks/debug-application-cluster/debug-application/>
+
+### control plane failure
+
+```console
+kubectl get nodes
+kubectl get pods
+kubectl get pods -n kube-system
+service kube-apiserver status
+service kube-controller-manager status
+service kube-scheduler status
+service kubelet status
+service kube-proxy status
+
+kubectl logs <controlplanecomponent> -n kube-system
+sudo journalctl -u kube-apiserver
+
+cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+cd /etc/kubernetes/manifests    <--- KUBEADM config file
+```
+
+<https://kubernetes.io/docs/tasks/debug-application-cluster/debug-cluster>
+
+### worker node failure
+
+```console
+kubectl get nodes
+kubectl describe node <nodeName>
+service kubelet status
+sudo journal -u kubelet
+openssl x509 -in /var/lib/kubelet/worker-1.crt -text
+```
