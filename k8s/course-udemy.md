@@ -3502,3 +3502,34 @@ kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl versio
 sudo curl -L git.io/weave -o /usr/local/bin/weave
 sudo chmod a+x /usr/local/bin/weave
 ```
+
+`kubeadm token create --print-join-command`
+
+## end to end section
+
+<https://www.youtube.com/watch?v=-ovJrIIED88&list=PL2We04F3Y_41jYdadX55fdJplDvgNGENo&index=18>
+
+golang must be installed: `go get -u k8s.io/test-infra/kubetest`; run `kubetest --extract=v1.11.3` (version must match kubernetes version that is actually running); `cd kubernetes`, `export KUBE_MASTER_IP="192.168.26.10:6443"`, `export KUBE_MASTER=kube-master` and `kubetest --test --provider=skeleton > test` skeleton is for local cluster; we should say google cloud, AWS or Azure. takes 12hrs!
+
+`kubetest --test --provider=skeleton --test_args="--ginkgo.focus=Secrets" > testout1` or `kubetest --test --provider=skeleton --test_args="--ginkgo.focus=\[Conformance\]" > testout1`
+
+## troubleshooting
+
+### app failure
+
+have a mental map of how the connections are made and check each link
+
+```console
+curl http://web-service-ip:node-port
+kubectl describe service web-service
+```
+
+check selectors on the def file and the ones running on the pod
+
+```console
+kubectl get pod
+kubectl describe pod <pod-name>
+kubectl logs <pod-name> -f --previous ****to check the logs when it failed****
+```
+
+<https://kubernetes.io/docs/tasks/debug-application-cluster/debug-application/>
