@@ -3421,7 +3421,7 @@ cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/
 
 then configure the etcd service:
 
-![089](./assets/089png)
+![089](./assets/089.png)
 
 use the `etcdctl` utility to store and retrieve data. there are to etcdctl version, v2 (default) and v3 (we'll use 3 - `export ETCDCTL_API=3`). `etcdctl put name john` create data; `etcdctl get name` retrieve data; `etcdctl get / --prefix --keys-only` get all keys
 
@@ -3565,3 +3565,85 @@ service kubelet status
 sudo journal -u kubelet
 openssl x509 -in /var/lib/kubelet/worker-1.crt -text
 ```
+
+it seems obvious at this point, but... kubelet = kube-apiserver
+
+- `kubectl -n kube-system get ep kube-dns`
+
+## other topics
+
+### json-path
+
+- <https://kodekloud.com/p/json-path-quiz>
+- <https://mmumshad.github.io/json-path-quiz/index.html#!/?questions=questionskub1>
+- <https://mmumshad.github.io/json-path-quiz/index.html#!/?questions=questionskub2>
+
+Dictionary:
+
+```yaml 
+# LIST/ARRAY
+- blue car
+- ugly cat
+# DICTIONARY
+# dictionary within a dictionary
+color: blue
+model:
+  name: corvette
+  year: 1995
+price: 20,000
+```
+
+### JSON PATH
+
+- [] --> array
+- {} --> dictionary
+
+<https://www.json2yaml.com>
+
+json path is a query language that helps us parse data represented in a json or yaml format. for any given data, we make a query aiming at getting filtered results
+
+```json
+{
+  "car": {
+    "color": "blue",
+    "price": "$20,000"
+  }
+}
+# query to get car details
+car
+# result
+{
+  "color": "blue",
+  "price": "$20,000"
+}
+# using dot-notation
+car.price
+"blue"
+```
+
+top level element of a dictionary, that usually has no name is known as the root element - it is denoted by the `$` - `$.color`.
+
+all query results are return with the form of an json array, that is, between []. to get an element `$[0]` --> the first element, `$[0,3]`
+
+![090](./assets/090.png)
+
+`$.car.wheels[1.model]`
+
+conditions or criteria. getting numbers from array bigger than 40:
+
+- check if= `?()`
+- each item in the list: `@`
+- in or nin - `@ in [ 40, 43, 45 ]`
+
+`$[?( @ > 40 )]`
+
+`$.car.wheels[?(@.location == "rear-right")].model`
+
+`$[*].model` --> get all models; `$.*.wheels[*].model`
+
+`$.prizes.[?(@.year == 2014 )].laureates[*].firstname`
+
+1 to 4 - NOT INCLUDING THE FORTH ELEMENT: `$[0:3]` - including the 4th element: `$[0:4]` - to specify the increment, add another semicolon: `$[0:8:2]` - latest element is `$[-1:0]` or `$[-1:]`
+
+  
+
