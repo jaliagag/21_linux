@@ -3681,6 +3681,42 @@ it seems obvious at this point, but... kubelet = kube-apiserver
 
 ## other topics
 
+### JSON PATH in k8s
+
+ use with kubectl, which communicates with the kube-apiserver. the kube-api server speaks JSON and sends JSON data, that then kubectl converts into human redeable format.
+
+ to perform queries using JSON PATH query sytax, we need to
+
+ 1. identify the kubectl command that will return raw data, all the data that we then want to filter - to see how the data is received add the `-o json` flag to teh command
+ 2. study the json output
+ 3. form the JSON PATH query to get the information we want (no need to add $): `.items[0].spec.containers[0].image`
+ 4. use the JSON PATH query with kubectl command `kubectl get pods -o=jsonpath='{ .items[0].spec.containers[0].image }'`
+
+ we can string several search results in a single command placing one after the other in between {}. we can format the output by `{"\n"}`, `{"\t"}\t`
+
+loop method: `'{range .items[*]}{.metadata.name}{"\t"}{.status.capacity.cpu}{"\n"}{end}'`
+
+another way of doing this is by: `kubectl get nodes -o=custom-columns=<COLUMN NAME>:<JSON PATH>`, for instance `-o=custom-columns=NODE:.detadata.name,CPU:.status.capacity.cpu`
+
+sorting: `kubectl get nodes --sort-by=.metadata.name`
+
+**If it's square brackets its an array/list. If its curly brackets it is a dictionary.**
+
+random queries
+
+```json
+$.status.containerStatuses[?(@.name == "redis-container")].restartCount
+$.[*].spec.containers[*].name
+$.[?(@.kind == "Pod")].metadata.name
+```
+
+```console
+kubectl get nodes -o=jsonpath='{.items[*].metadata.name}' > /opt/outputs/node_names.txt
+kubectl config view --kubeconfig=my-kube-config -o jsonpath="
+kubectl get pv
+kubectl get pv -o=custom-columns=NAME:.metadata.name,CAPACITY:.spec.capacity.storage --sort-by=.spec.capacity.storage > /opt/outputs/pv-and-capacity-sorted.txt
+```
+
 ### json-path
 
 - <https://kodekloud.com/p/json-path-quiz>
@@ -3753,39 +3789,3 @@ conditions or criteria. getting numbers from array bigger than 40:
 `$.prizes.[?(@.year == 2014 )].laureates[*].firstname`
 
 1 to 4 - NOT INCLUDING THE FORTH ELEMENT: `$[0:3]` - including the 4th element: `$[0:4]` - to specify the increment, add another semicolon: `$[0:8:2]` - latest element is `$[-1:0]` or `$[-1:]`
-
-### JSON PATH in k8s
-
- use with kubectl, which communicates with the kube-apiserver. the kube-api server speaks JSON and sends JSON data, that then kubectl converts into human redeable format.
-
- to perform queries using JSON PATH query sytax, we need to
-
- 1. identify the kubectl command that will return raw data, all the data that we then want to filter - to see how the data is received add the `-o json` flag to teh command
- 2. study the json output
- 3. form the JSON PATH query to get the information we want (no need to add $): `.items[0].spec.containers[0].image`
- 4. use the JSON PATH query with kubectl command `kubectl get pods -o=jsonpath='{ .items[0].spec.containers[0].image }'`
-
- we can string several search results in a single command placing one after the other in between {}. we can format the output by `{"\n"}`, `{"\t"}\t`
-
-loop method: `'{range .items[*]}{.metadata.name}{"\t"}{.status.capacity.cpu}{"\n"}{end}'`
-
-another way of doing this is by: `kubectl get nodes -o=custom-columns=<COLUMN NAME>:<JSON PATH>`, for instance `-o=custom-columns=NODE:.detadata.name,CPU:.status.capacity.cpu`
-
-sorting: `kubectl get nodes --sort-by=.metadata.name`
-
-**If it's square brackets its an array/list. If its curly brackets it is a dictionary.**
-
-random queries
-
-```json
-$.status.containerStatuses[?(@.name == "redis-container")].restartCount
-$.[*].spec.containers[*].name
-$.[?(@.kind == "Pod")].metadata.name
-```
-
-```console
-kubectl get nodes -o=jsonpath='{.items[*].metadata.name}' > /opt/outputs/node_names.txt
-kubectl config view --kubeconfig=my-kube-config -o jsonpath="
-kubectl get pv
-kubectl get pv -o=custom-columns=NAME:.metadata.name,CAPACITY:.spec.capacity.storage --sort-by=.spec.capacity.storage > /opt/outputs/pv-and-capacity-sorted.txt
-```
