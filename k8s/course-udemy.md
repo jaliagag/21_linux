@@ -3568,6 +3568,7 @@ sudo journalctl -u kubelet
 kubectl cluster-info
 openssl x509 -in /var/lib/kubelet/worker-1.crt -text
 ```
+
 ### network troubleshooting
 
 Kubernetes uses CNI plugins to setup network. The **kubelet** is responsible for executing plugins as we mention the following parameters in kubelet configuration.
@@ -3688,7 +3689,7 @@ it seems obvious at this point, but... kubelet = kube-apiserver
 
 - `kubectl -n kube-system get ep kube-dns`
 
-## other topics
+## other topics
 
 ### json-path
 
@@ -3698,7 +3699,7 @@ it seems obvious at this point, but... kubelet = kube-apiserver
 
 Dictionary:
 
-```yaml 
+```yaml
 # LIST/ARRAY
 - blue car
 - ugly cat
@@ -3763,7 +3764,7 @@ conditions or criteria. getting numbers from array bigger than 40:
 
 1 to 4 - NOT INCLUDING THE FORTH ELEMENT: `$[0:3]` - including the 4th element: `$[0:4]` - to specify the increment, add another semicolon: `$[0:8:2]` - latest element is `$[-1:0]` or `$[-1:]`
 
- ### JSON PATH in k8s
+### JSON PATH in k8s
 
  use with kubectl, which communicates with the kube-apiserver. the kube-api server speaks JSON and sends JSON data, that then kubectl converts into human redeable format.
 
