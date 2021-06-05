@@ -21,7 +21,7 @@ So let's take a 10000 feet look at the Kubernetes architecture.
 
 We have two kinds of ships.
 
-1. _cargo ships_ that does the actual work of carrying containers across to sea and
+1. _cargo ships_ that do the actual work of carrying containers across to sea and
 2. _control ships_ that are responsible for monitoring and managing the cargo ships.
 
 The **Kubernetes cluster** consists of a set of nodes which may be physical or virtual, on-premise or on cloud, that host applications in the form of containers. These relate to the cargo ships. In this analogy, the worker nodes in the cluster are ships that can load containers.
@@ -34,13 +34,11 @@ The control ships relate to the master node in the Kubernetes cluster. The maste
 
 Now there are many containers being loaded and unloaded from the ships on a daily basis. And so you need to __maintain information about__ the different ships __what container is on which ship and what time it was loaded__ etc. **All of these are stored in a highly available key value store known as Etcd**. The Etcd is a database that stores information in a key-value format. We will look more into what Etcd cluster actually is what data is stored in it and how it stores the data in one of the upcoming lectures.
 
-When ships arrive you load containers on them using cranes the cranes identify the containers that need to be placed on ships. It identifies the right ship based on its size its capacity the number of containers already on the ship and any other conditions such as the destination of the ship. The type of containers it is allowed to carry etc. So those are **schedulers in a Kubernetes cluster** as scheduler **identifies the right node to place a container on based on the containers**.
+When ships arrive you load containers on them using cranes the cranes identify the containers that need to be placed on ships. It identifies the right ship based on its size its capacity the number of containers already on the ship and any other conditions such as the destination of the ship. The type of containers it is allowed to carry etc. So those are **schedulers in a Kubernetes cluster** as scheduler **identifies the right node to place a container on based on the containers resource requirements**, the worker nodes capacity or any other policies or constraints such as taints and tolerations or node affinity  rules that are on them.
 
-Resource requirements the worker nodes capacity or any other policies or constraints such as tents and tolerations or node affinity  rules that are on them. We will look at these in much more detail with examples and practice tests later in this course. We have a whole section on scheduling alone.
+There are different offices in the dock that are assigned to special tasks or departments. For example the operations team takes care of ship handling traffic control etc. they deal with issues related to damages the routes the different ship state etc. The cargo team takes care of containers when continuous are damaged or destroyed. They make sure new containers are made available. You have these services office that takes care of the I.T. and communications between different ships. Similarly, in **Kubernetes we have controllers available that take care of different areas**.
 
-There are different offices in the dock that are assigned to special tasks or departments. For example the operations team takes care of ship handling traffic control etc. they deal with issues related to damages the routes the different ship state etc. The cargo team takes care of containers when continuous are damaged or destroyed. They make sure new containers are made available. You have these services office that takes care of the I.T. and communications between different ships. Similarly, in Kubernetes we have controllers available that take care of different areas.
-
-The **node-controller** takes care of nodes. They're responsible for onboarding new nodes to the cluster handling situations where nodes become unavailable or get destroyed and the replication controller ensures that the desired number of containers are running at all times in your replication group.
+The **node-controller** takes care of nodes. They're responsible for onboarding new nodes to the cluster handling situations where nodes become unavailable or get destroyed and the **replication controller** ensures that the desired number of containers are running at all times in your replication group.
 
 So we have seen different components like the different offices the different ships the data store the cranes. But _how do these communicate with each other_? How does one office reach the other office and who manages them all at a high level.
 
@@ -48,7 +46,7 @@ So we have seen different components like the different offices the different sh
 
 Now we are working with containers here. Containers are everywhere so we need everything to be container compatible. Our applications are in the form of containers the different components that form the entire management system. On the master nodes could be hosted in the form of containers.
 
-The DNS service networking solution can all be deployed in the form of containers. So we need these **software that can run containers and that's the container runtime engine. A popular one being Docker. So we need Docker or it's supported equivalent installed on all the nodes in the cluster including the master nodes.** if you wish to host the control plane components as containers. Now it doesn’t always have to be Docker.
+The DNS service networking solution can all be deployed in the form of containers. So we need these **software that can run containers and that's the container runtime engine. A popular one being Docker. So we need Docker or it's supported equivalent installed on all the nodes in the cluster including the master nodes** if you wish to host the control plane components as containers. Now it doesn’t always have to be Docker.
 
 Kubernetes supports other run time engines as well like ContainerD or Rocket.
 
@@ -122,8 +120,6 @@ specify etcdctl api version and path certificate files: `kubectl exec etcd-maste
 
 ### kube-api server
 
-In this lecture we will talk about the Kube-API server in kubernetes.
-
 Earlier we discussed that the Kube-api server is the _primary management component in kubernetes_.  When you run a `kubectl command`, **the kubectl utility is infact reaching to the kube-apiserver**. The kube-api server first authenticates the request and validates it. It then retrieves the data from the ETCD cluster and responds back with the requested information.
 
 You don’t really need to use the kubectl command line. Instead, you could also invoke the API directly by sending a post request.
@@ -147,8 +143,7 @@ To summarize, the kube-api server is responsible for Authenticating and validati
 
 If you bootstrapped your cluster using kubeadm tool then you don't need to know this but if you are setting up the hard way, then kube-apiserver is available as a binary in the kubernetes release page. Download it and configure it to run as a service on your kubernetes master node. The kube-api server is run with a lot of parameters. Throughout this section we are going to take a peak at how to install and configure these individual components of the kubernetes architecture.
 
-You don't have to understand all of the options right now but I think having a high level understanding on some of these now will make it easier later when we configure the whole cluster and all of its components
-from scratch.
+You don't have to understand all of the options right now but I think having a high level understanding on some of these now will make it easier later when we configure the whole cluster and all of its components from scratch.
 
 The kubernetes architecture consists of a lot of different components working with each other, talking to each other in many different ways so they all need to know where the other components are. There are different modes of authentication, authorization, encryption and security. And that’s why you have so many options.
 
@@ -165,8 +160,6 @@ If you set it up with kubeadm tool, kubeadm deploys the kube-api server as a pod
 In a non kubeadm setup, we can view the options of the kube-apiserver service located at /etc/systemd/system/kube-apiserver.service.You can also see the running process and the effective options by listing the process on the master node and searching for kube-apiserver `ps aux | grep kube-apiserver`.
 
 ### kube controller manager
-
-we will talk about Kube Controller Manager.
 
 As we discussed earlier, the kube controller manager manages various controllers in Kubernetes. A controller is like an office or department within the master ship that have their own set of responsibilities. Such as an office for the Ships would be responsible for monitoring and taking necessary actions about the ships. Whenever a new ship arrives or when a ship leaves or gets destroyed another office could be one that manages the containers on the ships they take care of containers that are damaged or full of ships.
 
@@ -185,8 +178,7 @@ Now those were just two examples of controllers. There are many more such contro
 
 As you can imagine this is kind of the brain behind a lot of things in kubernetes. Now how do you see these controllers and where are they located in your cluster. _They're all packaged into a single process known as_ **kubernetes controller manager**. When you install the kubernetes controller manager the different controllers get installed as well.
 
-So how do you install and view the kubernetes Controller manager? download the kube-controller-manager from the kubernetes release page. Extract it and run it as a service.
-When you run it as you can see there are a list of options provided this is where you provide additional options to customize your controller.
+So how do you install and view the kubernetes Controller manager? download the kube-controller-manager from the kubernetes release page. Extract it and run it as a service. When you run it as you can see there are a list of options provided this is where you provide additional options to customize your controller.
 
 Remember: some of the default settings for node controller we discussed earlier such as the node monitor period, the grace period and the eviction  timeout. These go in here as options.
 
@@ -213,7 +205,7 @@ Installing - download, isntall and run as a service.
 
 ### kubelet
 
-the kubelet in the worker nodes registers the nodes with the k8s cluster. when it receives instruction to load a container or pod on the nodes, it requests the container runtime engine to pull the required image and run an isntance of it.
+the kubelet in the worker nodes registers the nodes with the k8s cluster. when it receives instruction to load a container or pod on the nodes, it requests the container runtime engine to pull the required image and run an instance of it.
 
 The kubelet also monitors the status of the POD and containers in it and reports to the kube-api server.
 
@@ -402,7 +394,7 @@ using `kubectl run` command can help in generating a yaml template. if your were
 <https://kubernetes.io/docs/reference/kubectl/conventions/>
 
 - creating an nginx pod: `kubectl run nginx --image=nginx`
-- generate POD manifes yaml file (`-o yaml`) - don't create it (`--dry-run`): `kubectl run nginx --image=nginx --dry-run=client -o yaml`
+- generate POD manifes yaml file (`-o yaml`) - don't create it (`--dry-run=client`): `kubectl run nginx --image=nginx --dry-run=client -o yaml`
 - create a deployment: `kubectl create deployment --image=nginx nginx`
 - generate deployment yaml file (`-o yaml`). don't create it (`--dry-run`): `kubectl create deployment --image=nginx nginx --dry-run=client -o yaml`
 - generate deployment yaml file (`-o yaml`). don't create it (`--dry-run`) with 4 Replicas (`--replicas=4`): `kubectl create deployment --image=nginx nginx --dry-run=client --replicas=4 -o yaml > nginx-deployment.yaml`
@@ -458,9 +450,7 @@ root@controlplane:~#
 
 _default_ is the namespace that creates k8s. k8s creates a set of pods for internal purposes (networking solution, dns...) to isolate them from the user on another namespace named _kube-system_. a third namespace is created called _kube-public_; this is where resources that should be made available to all users are created.
 
-resources on namespaces are isolated.
-
-namespaces can have different sets of policies assigned, to define who can do what. you can also assign quotas/limits of resources to the namespaces.
+resources on namespaces are isolated. namespaces can have different sets of policies assigned, to define who can do what. you can also assign quotas/limits of resources to the namespaces.
 
 resources within a namespace can refer to each other simply by their names (`mysql.connect("db-service"`). a pod can reach a resource on another namespace - we must append the name of the namespace to the name of the service (`mysql.connect("db-service.dev.svc.cluster.local")` <<<--- connecting from, say, default ns to dev ns). we can access the resources because a DNS entry is created when the service is created.
 
@@ -3552,6 +3542,8 @@ sudo journalctl -u kube-apiserver
 
 cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 cd /etc/kubernetes/manifests    <--- KUBEADM config file
+cat /var/lib/kubelet/config.yaml
+cat /etc/kubernetes/kubelet.conf
 ```
 
 <https://kubernetes.io/docs/tasks/debug-application-cluster/debug-cluster>
@@ -3562,15 +3554,168 @@ cd /etc/kubernetes/manifests    <--- KUBEADM config file
 kubectl get nodes
 kubectl describe node <nodeName>
 service kubelet status
-sudo journal -u kubelet
+sudo journalctl -u kubelet
+kubectl cluster-info
 openssl x509 -in /var/lib/kubelet/worker-1.crt -text
 ```
+
+### network troubleshooting
+
+Kubernetes uses CNI plugins to setup network. The **kubelet** is responsible for executing plugins as we mention the following parameters in kubelet configuration.
+
+- `cni-bin-dir`:   Kubelet probes this directory for plugins on startup
+- `network-plugin`: The network plugin to use from `cni-bin-dir`. It must match the name reported by a plugin probed from the plugin directory.
+
+There are several plugins available and these are some.
+
+1. Weave Net: These is the only plugin mentioned in the kubernetes documentation. To install `kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"` You can find this in following documentation : <https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/high-availability/>
+
+2. Flannel: To install, `kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/2140ac876ef134e0ed5af15c65e414cf26827915/Documentation/kube-flannel.yml` Note: As of now flannel does not support kubernetes network policies.
+
+3. Calico: To install `curl https://docs.projectcalico.org/manifests/calico.yaml -O`. Apply the manifest using the following command. `kubectl apply -f calico.yaml` Calico is said to have most advanced cni network plugin.
+
+In CKA and CKAD exam, you won't be asked to install the cni plugin. But if asked you will be provided with the exact url to install it. If not, you can install weave net from the documentation <https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/high-availability/>
+
+Note: If there are multiple CNI configuration files in the directory, the kubelet uses the configuration file that comes first by name in lexicographic order.
+
+#### DNS in Kubernetes
+
+Kubernetes uses CoreDNS. CoreDNS is a flexible, extensible DNS server that can serve as the Kubernetes cluster DNS.
+
+Memory and Pods: In large scale Kubernetes clusters, CoreDNS's memory usage is predominantly affected by the number of Pods and Services in the cluster. Other factors include the size of the filled DNS answer cache, and the rate of queries received (QPS) per CoreDNS instance.
+
+Kubernetes resources for coreDNS are:
+
+- a service account named coredns,
+- cluster-roles named coredns and kube-dns
+- clusterrolebindings named coredns and kube-dns,
+- a deployment named coredns,
+- a configmap named coredns and a
+- service named kube-dns.
+
+While analyzing the coreDNS deployment you can see that the the Corefile plugin consists of important configuration which is defined as a configmap.
+
+Port 53 is used for for DNS resolution.
+
+```console
+kubernetes cluster.local in-addr.arpa ip6.arpa {
+    pods insecure
+    fallthrough in-addr.arpa ip6.arpa
+    ttl 30
+}
+```
+
+This is the backend to k8s for cluster.local and reverse domains. `proxy . /etc/resolv.conf` Forward out of cluster domains directly to right authoritative DNS server.
+
+Troubleshooting issues related to coreDNS
+
+- If you find CoreDNS pods in pending state first check network plugin is installed.
+- coredns pods have CrashLoopBackOff or Error state
+
+If you have nodes that are running SELinux with an older version of Docker you might experience a scenario where the coredns pods are not starting. To solve that you can try one of the following options:
+
+1. Upgrade to a newer version of Docker.
+2. Disable SELinux.
+3. Another cause for CoreDNS to have CrashLoopBackOff is when a CoreDNS Pod deployed in Kubernetes detects a loop.
+4. Modify the coredns deployment to set allowPrivilegeEscalation to true:
+
+```console
+kubectl -n kube-system get deployment coredns -o yaml | \
+  sed 's/allowPrivilegeEscalation: false/allowPrivilegeEscalation: true/g' | \
+  kubectl apply -f -
+```
+
+There are many ways to work around this issue, some are listed here:
+
+1. Add the following to your kubelet config yaml: resolvConf: `<path-to-your-real-resolv-conf-file>` This flag tells kubelet to pass an alternate resolv.conf to Pods. For systems using systemd-resolved, /run/systemd/resolve/resolv.conf is typically the location of the "real" resolv.conf, although this can be different depending on your distribution.
+2. Disable the local DNS cache on host nodes, and restore /etc/resolv.conf to the original.
+3. A quick fix is to edit your Corefile, replacing forward . /etc/resolv.conf with the IP address of your upstream DNS, for example forward . 8.8.8.8. But this only fixes the issue for CoreDNS, kubelet will continue to forward the invalid resolv.conf to all default dnsPolicy Pods, leaving them unable to resolve DNS.
+
+- If CoreDNS pods and the kube-dns service is working fine, check the kube-dns service has valid endpoints. `kubectl -n kube-system get ep kube-dns`
+
+If there are no endpoints for the service, inspect the service and make sure it uses the correct selectors and ports.
+
+#### Kube-Proxy
+
+kube-proxy is a network proxy that runs on each node in the cluster. kube-proxy maintains network rules on nodes. **These network rules allow network communication to the Pods from network sessions inside or outside of the cluster**. _In a cluster configured with kubeadm, you can find kube-proxy as a daemonset_.
+
+**kubeproxy** is responsible for watching services and endpoint associated with each service. When the client is going to connect to the service using the virtual IP the kubeproxy is responsible for sending traffic to actual pods.
+
+If you run a `kubectl describe ds kube-proxy -n kube-system` you can see that the kube-proxy binary runs with following command inside the kube-proxy container.
+
+```console
+Command:
+  /usr/local/bin/kube-proxy
+  --config=/var/lib/kube-proxy/config.conf
+  --hostname-override=$(NODE_NAME)
+```
+
+So it fetches the configuration from a configuration file ie, `/var/lib/kube-proxy/config.conf` and we can override the hostname with the node name of at which the pod is running.
+
+In the config file we define the clusterCIDR, kubeproxy mode, ipvs, iptables, bindaddress, kube-config etc.
+
+Troubleshooting issues related to kube-proxy
+
+1. Check kube-proxy pod in the kube-system namespace is running.
+2. Check kube-proxy logs.
+3. Check configmap is correctly defined and the config file for running kube-proxy binary is correct.
+4. kube-config is defined in the config map.
+5. check kube-proxy is running inside the container
+
+```console
+# netstat -plan | grep kube-proxy
+tcp        0      0 0.0.0.0:30081           0.0.0.0:*               LISTEN      1/kube-proxy
+tcp        0      0 127.0.0.1:10249         0.0.0.0:*               LISTEN      1/kube-proxy
+tcp        0      0 172.17.0.12:33706       172.17.0.12:6443        ESTABLISHED 1/kube-proxy
+tcp6       0      0 :::10256                :::*                    LISTEN      1/kube-proxy
+```
+
+References:
+
+- Debug Service issues: <https://kubernetes.io/docs/tasks/debug-application-cluster/debug-service/>
+- DNS Troubleshooting: <https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/>
 
 it seems obvious at this point, but... kubelet = kube-apiserver
 
 - `kubectl -n kube-system get ep kube-dns`
 
 ## other topics
+
+### JSON PATH in k8s
+
+ use with kubectl, which communicates with the kube-apiserver. the kube-api server speaks JSON and sends JSON data, that then kubectl converts into human redeable format.
+
+ to perform queries using JSON PATH query sytax, we need to
+
+ 1. identify the kubectl command that will return raw data, all the data that we then want to filter - to see how the data is received add the `-o json` flag to teh command
+ 2. study the json output
+ 3. form the JSON PATH query to get the information we want (no need to add $): `.items[0].spec.containers[0].image`
+ 4. use the JSON PATH query with kubectl command `kubectl get pods -o=jsonpath='{ .items[0].spec.containers[0].image }'`
+
+ we can string several search results in a single command placing one after the other in between {}. we can format the output by `{"\n"}`, `{"\t"}\t`
+
+loop method: `'{range .items[*]}{.metadata.name}{"\t"}{.status.capacity.cpu}{"\n"}{end}'`
+
+another way of doing this is by: `kubectl get nodes -o=custom-columns=<COLUMN NAME>:<JSON PATH>`, for instance `-o=custom-columns=NODE:.detadata.name,CPU:.status.capacity.cpu`
+
+sorting: `kubectl get nodes --sort-by=.metadata.name`
+
+**If it's square brackets its an array/list. If its curly brackets it is a dictionary.**
+
+random queries
+
+```json
+$.status.containerStatuses[?(@.name == "redis-container")].restartCount
+$.[*].spec.containers[*].name
+$.[?(@.kind == "Pod")].metadata.name
+```
+
+```console
+kubectl get nodes -o=jsonpath='{.items[*].metadata.name}' > /opt/outputs/node_names.txt
+kubectl config view --kubeconfig=my-kube-config -o jsonpath="
+kubectl get pv
+kubectl get pv -o=custom-columns=NAME:.metadata.name,CAPACITY:.spec.capacity.storage --sort-by=.spec.capacity.storage > /opt/outputs/pv-and-capacity-sorted.txt
+```
 
 ### json-path
 

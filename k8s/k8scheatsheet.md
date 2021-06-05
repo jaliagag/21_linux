@@ -7,6 +7,7 @@
 - `kubectl describe pods <name> | grep -i image`
 - `kubectl describe pods <name> | grep -i node`
 - `kubectl describe daemonsests --namespace=<nsName>`
+- to escale the number of replicas, we can simply update the rs config file `kubectl replace -f <file>`; to do this task manually, we can run `kubectl scale --replicas=6 <file>` or `kubectl scale --replicas=6 <type> <rsName>`<-- this does not update the rs definition file. We can also use `kubectl edit <replicasetName>`, update the configuration there and then delte de pods
 - `kubectl get pods -o wide`
 - `watch "kubectl get pods"`
 - view containers within a pod: `kubectl logs webapp -c`
@@ -49,3 +50,7 @@
 |------ |------|
 | kube-api | 6443 |
 | etcd | 2379 |
+
+## etcdctl
+
+- `etcdctl get` : get keyts stored
