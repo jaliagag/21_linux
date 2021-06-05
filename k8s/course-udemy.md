@@ -3570,7 +3570,7 @@ it seems obvious at this point, but... kubelet = kube-apiserver
 
 - `kubectl -n kube-system get ep kube-dns`
 
-## other topics
+## other topics
 
 ### json-path
 
@@ -3580,7 +3580,7 @@ it seems obvious at this point, but... kubelet = kube-apiserver
 
 Dictionary:
 
-```yaml 
+```yaml
 # LIST/ARRAY
 - blue car
 - ugly cat
@@ -3644,6 +3644,3 @@ conditions or criteria. getting numbers from array bigger than 40:
 `$.prizes.[?(@.year == 2014 )].laureates[*].firstname`
 
 1 to 4 - NOT INCLUDING THE FORTH ELEMENT: `$[0:3]` - including the 4th element: `$[0:4]` - to specify the increment, add another semicolon: `$[0:8:2]` - latest element is `$[-1:0]` or `$[-1:]`
-
-  
-
