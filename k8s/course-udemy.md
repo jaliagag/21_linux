@@ -120,8 +120,6 @@ specify etcdctl api version and path certificate files: `kubectl exec etcd-maste
 
 ### kube-api server
 
-In this lecture we will talk about the Kube-API server in kubernetes.
-
 Earlier we discussed that the Kube-api server is the _primary management component in kubernetes_.  When you run a `kubectl command`, **the kubectl utility is infact reaching to the kube-apiserver**. The kube-api server first authenticates the request and validates it. It then retrieves the data from the ETCD cluster and responds back with the requested information.
 
 You don’t really need to use the kubectl command line. Instead, you could also invoke the API directly by sending a post request.
@@ -145,8 +143,7 @@ To summarize, the kube-api server is responsible for Authenticating and validati
 
 If you bootstrapped your cluster using kubeadm tool then you don't need to know this but if you are setting up the hard way, then kube-apiserver is available as a binary in the kubernetes release page. Download it and configure it to run as a service on your kubernetes master node. The kube-api server is run with a lot of parameters. Throughout this section we are going to take a peak at how to install and configure these individual components of the kubernetes architecture.
 
-You don't have to understand all of the options right now but I think having a high level understanding on some of these now will make it easier later when we configure the whole cluster and all of its components
-from scratch.
+You don't have to understand all of the options right now but I think having a high level understanding on some of these now will make it easier later when we configure the whole cluster and all of its components from scratch.
 
 The kubernetes architecture consists of a lot of different components working with each other, talking to each other in many different ways so they all need to know where the other components are. There are different modes of authentication, authorization, encryption and security. And that’s why you have so many options.
 
@@ -163,8 +160,6 @@ If you set it up with kubeadm tool, kubeadm deploys the kube-api server as a pod
 In a non kubeadm setup, we can view the options of the kube-apiserver service located at /etc/systemd/system/kube-apiserver.service.You can also see the running process and the effective options by listing the process on the master node and searching for kube-apiserver `ps aux | grep kube-apiserver`.
 
 ### kube controller manager
-
-we will talk about Kube Controller Manager.
 
 As we discussed earlier, the kube controller manager manages various controllers in Kubernetes. A controller is like an office or department within the master ship that have their own set of responsibilities. Such as an office for the Ships would be responsible for monitoring and taking necessary actions about the ships. Whenever a new ship arrives or when a ship leaves or gets destroyed another office could be one that manages the containers on the ships they take care of containers that are damaged or full of ships.
 
@@ -183,8 +178,7 @@ Now those were just two examples of controllers. There are many more such contro
 
 As you can imagine this is kind of the brain behind a lot of things in kubernetes. Now how do you see these controllers and where are they located in your cluster. _They're all packaged into a single process known as_ **kubernetes controller manager**. When you install the kubernetes controller manager the different controllers get installed as well.
 
-So how do you install and view the kubernetes Controller manager? download the kube-controller-manager from the kubernetes release page. Extract it and run it as a service.
-When you run it as you can see there are a list of options provided this is where you provide additional options to customize your controller.
+So how do you install and view the kubernetes Controller manager? download the kube-controller-manager from the kubernetes release page. Extract it and run it as a service. When you run it as you can see there are a list of options provided this is where you provide additional options to customize your controller.
 
 Remember: some of the default settings for node controller we discussed earlier such as the node monitor period, the grace period and the eviction  timeout. These go in here as options.
 
@@ -211,7 +205,7 @@ Installing - download, isntall and run as a service.
 
 ### kubelet
 
-the kubelet in the worker nodes registers the nodes with the k8s cluster. when it receives instruction to load a container or pod on the nodes, it requests the container runtime engine to pull the required image and run an isntance of it.
+the kubelet in the worker nodes registers the nodes with the k8s cluster. when it receives instruction to load a container or pod on the nodes, it requests the container runtime engine to pull the required image and run an instance of it.
 
 The kubelet also monitors the status of the POD and containers in it and reports to the kube-api server.
 
@@ -400,7 +394,7 @@ using `kubectl run` command can help in generating a yaml template. if your were
 <https://kubernetes.io/docs/reference/kubectl/conventions/>
 
 - creating an nginx pod: `kubectl run nginx --image=nginx`
-- generate POD manifes yaml file (`-o yaml`) - don't create it (`--dry-run`): `kubectl run nginx --image=nginx --dry-run=client -o yaml`
+- generate POD manifes yaml file (`-o yaml`) - don't create it (`--dry-run=client`): `kubectl run nginx --image=nginx --dry-run=client -o yaml`
 - create a deployment: `kubectl create deployment --image=nginx nginx`
 - generate deployment yaml file (`-o yaml`). don't create it (`--dry-run`): `kubectl create deployment --image=nginx nginx --dry-run=client -o yaml`
 - generate deployment yaml file (`-o yaml`). don't create it (`--dry-run`) with 4 Replicas (`--replicas=4`): `kubectl create deployment --image=nginx nginx --dry-run=client --replicas=4 -o yaml > nginx-deployment.yaml`
@@ -456,9 +450,7 @@ root@controlplane:~#
 
 _default_ is the namespace that creates k8s. k8s creates a set of pods for internal purposes (networking solution, dns...) to isolate them from the user on another namespace named _kube-system_. a third namespace is created called _kube-public_; this is where resources that should be made available to all users are created.
 
-resources on namespaces are isolated.
-
-namespaces can have different sets of policies assigned, to define who can do what. you can also assign quotas/limits of resources to the namespaces.
+resources on namespaces are isolated. namespaces can have different sets of policies assigned, to define who can do what. you can also assign quotas/limits of resources to the namespaces.
 
 resources within a namespace can refer to each other simply by their names (`mysql.connect("db-service"`). a pod can reach a resource on another namespace - we must append the name of the namespace to the name of the service (`mysql.connect("db-service.dev.svc.cluster.local")` <<<--- connecting from, say, default ns to dev ns). we can access the resources because a DNS entry is created when the service is created.
 
