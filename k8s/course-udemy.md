@@ -3421,7 +3421,7 @@ cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/
 
 then configure the etcd service:
 
-![089](./assets/089png)
+![089](./assets/089.png)
 
 use the `etcdctl` utility to store and retrieve data. there are to etcdctl version, v2 (default) and v3 (we'll use 3 - `export ETCDCTL_API=3`). `etcdctl put name john` create data; `etcdctl get name` retrieve data; `etcdctl get / --prefix --keys-only` get all keys
 
@@ -3568,7 +3568,6 @@ sudo journalctl -u kubelet
 kubectl cluster-info
 openssl x509 -in /var/lib/kubelet/worker-1.crt -text
 ```
-
 ### network troubleshooting
 
 Kubernetes uses CNI plugins to setup network. The **kubelet** is responsible for executing plugins as we mention the following parameters in kubelet configuration.
@@ -3684,3 +3683,118 @@ References:
 
 - Debug Service issues: <https://kubernetes.io/docs/tasks/debug-application-cluster/debug-service/>
 - DNS Troubleshooting: <https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/>
+
+it seems obvious at this point, but... kubelet = kube-apiserver
+
+- `kubectl -n kube-system get ep kube-dns`
+
+## other topics
+
+### json-path
+
+- <https://kodekloud.com/p/json-path-quiz>
+- <https://mmumshad.github.io/json-path-quiz/index.html#!/?questions=questionskub1>
+- <https://mmumshad.github.io/json-path-quiz/index.html#!/?questions=questionskub2>
+
+Dictionary:
+
+```yaml 
+# LIST/ARRAY
+- blue car
+- ugly cat
+# DICTIONARY
+# dictionary within a dictionary
+color: blue
+model:
+  name: corvette
+  year: 1995
+price: 20,000
+```
+
+### JSON PATH
+
+- [] --> array
+- {} --> dictionary
+
+<https://www.json2yaml.com>
+
+json path is a query language that helps us parse data represented in a json or yaml format. for any given data, we make a query aiming at getting filtered results
+
+```json
+{
+  "car": {
+    "color": "blue",
+    "price": "$20,000"
+  }
+}
+# query to get car details
+car
+# result
+{
+  "color": "blue",
+  "price": "$20,000"
+}
+# using dot-notation
+car.price
+"blue"
+```
+
+top level element of a dictionary, that usually has no name is known as the root element - it is denoted by the `$` - `$.color`.
+
+all query results are return with the form of an json array, that is, between []. to get an element `$[0]` --> the first element, `$[0,3]`
+
+![090](./assets/090.png)
+
+`$.car.wheels[1.model]`
+
+conditions or criteria. getting numbers from array bigger than 40:
+
+- check if= `?()`
+- each item in the list: `@`
+- in or nin - `@ in [ 40, 43, 45 ]`
+
+`$[?( @ > 40 )]`
+
+`$.car.wheels[?(@.location == "rear-right")].model`
+
+`$[*].model` --> get all models; `$.*.wheels[*].model`
+
+`$.prizes.[?(@.year == 2014 )].laureates[*].firstname`
+
+1 to 4 - NOT INCLUDING THE FORTH ELEMENT: `$[0:3]` - including the 4th element: `$[0:4]` - to specify the increment, add another semicolon: `$[0:8:2]` - latest element is `$[-1:0]` or `$[-1:]`
+
+ ### JSON PATH in k8s
+
+ use with kubectl, which communicates with the kube-apiserver. the kube-api server speaks JSON and sends JSON data, that then kubectl converts into human redeable format.
+
+ to perform queries using JSON PATH query sytax, we need to
+
+ 1. identify the kubectl command that will return raw data, all the data that we then want to filter - to see how the data is received add the `-o json` flag to teh command
+ 2. study the json output
+ 3. form the JSON PATH query to get the information we want (no need to add $): `.items[0].spec.containers[0].image`
+ 4. use the JSON PATH query with kubectl command `kubectl get pods -o=jsonpath='{ .items[0].spec.containers[0].image }'`
+
+ we can string several search results in a single command placing one after the other in between {}. we can format the output by `{"\n"}`, `{"\t"}\t`
+
+loop method: `'{range .items[*]}{.metadata.name}{"\t"}{.status.capacity.cpu}{"\n"}{end}'`
+
+another way of doing this is by: `kubectl get nodes -o=custom-columns=<COLUMN NAME>:<JSON PATH>`, for instance `-o=custom-columns=NODE:.detadata.name,CPU:.status.capacity.cpu`
+
+sorting: `kubectl get nodes --sort-by=.metadata.name`
+
+**If it's square brackets its an array/list. If its curly brackets it is a dictionary.**
+
+random queries
+
+```json
+$.status.containerStatuses[?(@.name == "redis-container")].restartCount
+$.[*].spec.containers[*].name
+$.[?(@.kind == "Pod")].metadata.name
+```
+
+```console
+kubectl get nodes -o=jsonpath='{.items[*].metadata.name}' > /opt/outputs/node_names.txt
+kubectl config view --kubeconfig=my-kube-config -o jsonpath="
+kubectl get pv
+kubectl get pv -o=custom-columns=NAME:.metadata.name,CAPACITY:.spec.capacity.storage --sort-by=.spec.capacity.storage > /opt/outputs/pv-and-capacity-sorted.txt
+```
