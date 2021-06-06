@@ -3480,7 +3480,7 @@ kubeadm init --pod-network-cidr 10.244.0.0/16 --apiserver-advertise-address=192.
 ****regular user****
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown #(id -u):$(id -g) $HOOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
 ****copy kubeadm join command****
 ****deploy network solution****
 kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
@@ -3790,3 +3790,5 @@ conditions or criteria. getting numbers from array bigger than 40:
 `$.prizes.[?(@.year == 2014 )].laureates[*].firstname`
 
 1 to 4 - NOT INCLUDING THE FORTH ELEMENT: `$[0:3]` - including the 4th element: `$[0:4]` - to specify the increment, add another semicolon: `$[0:8:2]` - latest element is `$[-1:0]` or `$[-1:]`
+
+<https://github.com/walidshaari/Kubernetes-Certified-Administrator>
