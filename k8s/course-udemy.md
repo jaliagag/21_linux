@@ -3444,7 +3444,7 @@ net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
 EOF
 sudo sysctl --system
-sudo apt-get update && apt-get install -y apt-transport-https ca-certificates curl software-properties-common gnupg2
+sudo apt-get update && sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common gnupg2
 curl -fsSl https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 sudo-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 sudo apt-get update && apt-get install -y containerd.io=1.2.13-1 docker-ce=5:19.03.8~3-0~ubuntu-$(lsb_release -cs) docker-ce-cli=5:19.03.8~3-0~ubuntu-$(lsb_release -cs)
@@ -3464,6 +3464,7 @@ systemctl restart docker
 systemctl status docker
 sdo apt-get update && sudo apt-get install -y apt-transport-https curl
 sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+sudo apt-add-repository "deb http://apt.kubernetes.io/ kubernetes-xenial main"
 echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
 sudo apt-get update
 sudo apt-get install -y kubelet kubeadm kubectl
@@ -3475,7 +3476,7 @@ sudo apt-mark hold kubelet kubeadm kubectl
 
 ```console
 ****only on the master****
-kubeadmin init --pod-network-cidr 10.244.0.0/16 --apiserver-advertise-address=192.168.56.2
+kubeadm init --pod-network-cidr 10.244.0.0/16 --apiserver-advertise-address=192.168.56.2
 ****regular user****
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
