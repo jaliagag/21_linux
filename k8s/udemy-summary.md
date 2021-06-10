@@ -78,3 +78,9 @@ deployments are k8s objects that are higher than replicasets. it allows for seam
 resources on namespaces are isolated. namespaces can have different sets of policies assigned, to define who can do what. you can also assign quotas/limits of resources to the namespaces.
 
 - <https://kubernetes.io/docs/concepts/overview/components/>
+
+## services
+
+- node-port: the service makes an internal port accesible on a port on the node
+- clusterIP: the service creates a virtual IP inside the cluster to enable communication between services, for instance, fron end and backend servers
+- load balancer: it creates a load balancer for our app in supported cloud providers

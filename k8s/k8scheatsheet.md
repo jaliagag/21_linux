@@ -2,6 +2,7 @@
 
 ## get information
 
+- `ps aux | grep kubelet | grep "\--config"` or `ps aux | grep kubelet | grep "\--pod-mani"`
 - `kubectl get pod`
 - `kubectl get pods --all-namespaces || -A`
 - `kubectl describe pods <name> | grep -i image`
@@ -17,6 +18,7 @@
 - create single pod: `kubectl run nginx --image=nginx`
 - delete pod: `kubectl delete pod webapp`
 - create yml from command: `kubectl run redis --image=redis123 --dry-run=client -o yml > <fileName>`
+- create a pod and run a command: `kubectl run static-box --image=busybox --comand sleep 1000`
 - Update a single-container pod's image version (tag) to v4: `kubectl get pod mypod -o yaml | sed 's/\(image: myimage\):.*$/\1:v4/' | kubectl replace -f -`
 - `kubectl drain <nodeName>` also cordons it
 - `kubectl uncordon <nodeName>` gets the back into the pool to receive pods
