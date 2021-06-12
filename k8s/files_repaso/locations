@@ -1,0 +1,1 @@
+we can configure the kubelet to create pods on the definition file stored on a directory /etc/kubernetes/manifests

@@ -8,7 +8,7 @@
 - <http://training.linuxfoundation.org/go//Important-Tips-CKA-CKAD>
 - <https://github.com/kodekloudhub/certified-kubernetes-administrator-course>
 
-## Core Concepts
+## 1. Core Concepts
 
 We're going to use an analogy of ships to understand the architecture of Kubernetes.
 
@@ -668,7 +668,7 @@ the last applied configuration file is used to "figure out" what fields are/were
 
 the last applied configuration information is stored within the live object configuration file as an annotation named _last-applied-configuration_. kubectl create or replace do not store the last applied configuration.
 
-## Scheduling
+## 2. Scheduling
 
 manual scheduling. ervery pod has a field called **nodeName** that by default it is not set. the scheduler goes over all the pods and looks for those that do not have this property set. those are the candidates for scheduling.
 
@@ -740,9 +740,9 @@ to add a toleration to pod throught the definition file, add a section called to
     effect: "NoSchedule"
 ```
 
-taints and toleratiosn are meant to restrict nodes from accepting certain pods. a node might be configured to accept only a certain toleration, but that does not mean that the pod _will always_ be placed on that node if there are no tains applied to the other nodes.
+taints and toleratiosn are meant to restrict nodes from accepting certain pods. a node might be configured to accept only a certain toleration, but that does not mean that the pod _will always_ be placed on that node if there are no taints applied to the other nodes.
 
-tainsts and tolerations do not tell the pod to go to a particular node. it tells the node to only accept pods with certain tolerations.
+taints and tolerations do not tell the pod to go to a particular node. it tells the node to only accept pods with certain tolerations.
 
 if the requirement is to restrict a pod to a certain node, it is accomplished through a concept known as _node affinity_.
 
@@ -784,7 +784,7 @@ if we don't know why a pod is not being created, we can use `kubectl describe po
     size: Large
 ```
 
-size: Large - _labels_ assigned to the nodes. the scheduler uses these labels to match and identify the right node to place the nods on.
+size: Large - _labels_ assigned to the nodes. the scheduler uses these labels to match and identify the right node to place the pods on.
 
 labeling a node: `kubectl label nodes <nodeName> <labelKey>=<labelValue>` or on the node definition file. after labelling the node we can create the pod using the nodeSelector attribute.
 
@@ -826,7 +826,7 @@ what if node affinity cannot match a node with the given expression? this is sol
   - requiredDuringSchedulingIgnoredDuringExecution:
   - preferredDuringSchedulingIgnoredDuringExecution:
 - Planned
-  - requiredDuringSchedulingRequiredDuringExecution: this is still being develop - it will evict any pods upon a change in the environment (say a label).
+  - requiredDuringSchedulingRequiredDuringExecution: this is still being developed - it will evict any pods upon a change in the environment (say a label).
 
 - DuringScheduling: state when a pod does not exist and is created for the first time. when first created, the affinity rules created are considered to place a pod on the right node. what if we forgot to label the node? that's where the type of node affinity
   - Required: the scheduler will mandate that the pod be placed on the node with the given affinity rules. if it cannot find one, the pod will not be scheduled. this type will be used when the placement of the pod is _crucial_.
@@ -963,7 +963,7 @@ execeeding the limits
 - cpu: k8s throttles the cpu so that it doesn't go beyond the specified limit
 - memory: containers can use more memory than its limit. if it _constantly_ tries to (and consumes?) consume more memory than it limits, the pod is terminated.
 
-With Deployments you can easily edit any field/property of the POD template. Since the pod template is a child of the deployment specification,  with every change the deployment will automatically delete and create a new pod with the new changes. So if you are asked to edit a property of a POD part of a deployment you may do that simply by running the command
+With Deployments you can easily edit any field/property of the POD template. Since the pod template is a child of the deployment specification, with every change the deployment will automatically delete and create a new pod with the new changes. So if you are asked to edit a property of a POD part of a deployment you may do that simply by running the command
 
 `kubectl edit deployment my-deployment`
 
@@ -1006,9 +1006,7 @@ An easy way to create a DaemonSet is to first generate a YAML file for a Deploym
 
 the kubelet relies on the kubeapi server for instruction on which pods to load on its node. we can configure the kubelet to create pods on the definition file stored on a directory `/etc/kubernetes/manifests`. it checks constantly to see if there are new files. kubelet can also restart the pod in case the pod crashes. if changes are made on the file, the pod is also updated. if the file is removed, the pod is deleted. these are static pods.
 
-no replica sets, nor daemonsets, nor services can be created this way. only pods.
-
-kubelet works at pod level and only understands pods.
+static pods are created only by the kubelet, without interaction with the kube-apiserver; that's what makes them _static pods_. no replica sets, nor daemonsets, nor services can be created this way. only pods. kubelet works at pod level and only understands pods.
 
 we can change the location of where pod are stored. we have to modify the kubelet service line that contains `--pod-manifest-path=<xxxx>`. we replace this line with an external yaml file to indicate where these files will be stored: `--config=kubeconfig.yaml`. on that file `staticPodPath: /etc/kubernetes/manifests`.
 
@@ -1028,7 +1026,7 @@ when creating a pod or deployment you can instruct k8s to have the pod scheduled
 
 ![33](./assets/033.PNG)
 
-- leader-elect=true: choosing a leader who will have the final say.
+- --leader-elect=true: choosing a leader who will have the final say.
 
 `schedulerName: <schedulerName>` - same level as containers under spec
 
@@ -1056,11 +1054,11 @@ additional schedulers
 - <https://jvns.ca/blog/2017/07/27/how-does-the-kubernetes-scheduler-work/>
 - <https://stackoverflow.com/questions/28857993/how-does-kubernetes-scheduler-work>
 
-## logging and monitoring
+## 3. logging and monitoring
 
 resource consumption - what to monitor?
 
-- metrics server - one metrics server per k8s cluster. it retrieves metrics from each of the k8s nodes and pods, aggregates them and stores them in memory (this service is an in-memory solution). it does not store information on the disk, you cannot see historical performance data. we need advanced monitoring soultion. the kubelect runs a subcomponent known as cAdvisor (container Advisor) responsible for retrieving performance metrics from PODs and exposing them through the kubelet api to make the metrics available for the metrics server . running minikube - `minikube addons enable metrics-server` - for all other environments, run `git clone https://github.com/kubernetes-incubator/metrics-serve` + `kubectl create -f deploy/1.8+/`; these commands deploys a number of pods, services and roles to allow the metrics server to pull the necessary data - to see data: `kubectl top node` `kubectl top pod`. kodekloud component: <https://github.com/kodekloudhub/kubernetes-metrics-server.git>
+- metrics server - one metrics server per k8s cluster. it retrieves metrics from each of the k8s nodes and pods, aggregates them and stores them in memory (this service is an in-memory solution). it does not store information on the disk, you cannot see historical performance data. we need advanced monitoring soultion. the kubelet runs a subcomponent known as cAdvisor (container Advisor) responsible for retrieving performance metrics from PODs and exposing them through the kubelet api to make the metrics available for the metrics server. running minikube - `minikube addons enable metrics-server` - for all other environments, run `git clone https://github.com/kubernetes-incubator/metrics-serve` + `kubectl create -f deploy/1.8+/`; these commands deploy a number of pods, services and roles to allow the metrics server to pull the necessary data - to see data: `kubectl top node` `kubectl top pod`. kodekloud component: <https://github.com/kodekloudhub/kubernetes-metrics-server.git>
 - prometheus and other monitoring apps
 
 ### application logs
@@ -1086,7 +1084,7 @@ spec:
 
 - `kubectl logs <podName> | grep -i whatever`
 
-## Application Lifecycle Management
+## 4. Application Lifecycle Management
 
 ### rolling updates and rollbacks
 
@@ -1095,7 +1093,7 @@ when you first create a deployiment, it triggers a rollout - a new rollout creat
 - `kubectl rollout status <deploymentName>` see the status of the rollout
 - `kubectl rollout history <deploymentName>` revisions and history of the deployment
 
-2 types of deplyment rollout strategies
+2 types of deployment rollout strategies
 
 1. Recreate: destroy current pods at once and create new ones with the new version. not the default
 2. rolling-update: we do not destroy all pods at once, but rather we take one pod down and bring another back up - the app doesn't go down, upgrade is seamless. if we don't specify a specific strategy, k8s will assume it's a rolling update.
@@ -1314,7 +1312,7 @@ InitContainers: in a multi-contiainer pod, each container is expected to run a p
 
 at imes you may want to run a process that runs to completion in a container, that is a task that will be run only one time when the pod is first created, or a process that waits for an external service or database to be up before the actual app starts. that's where **initContainers** come in.
 
-a initContainer is configured in a pod like all othe rcontainers, except that it is specified inside a `initContainers` section:
+a initContainer is configured in a pod like all other containers, except that it is specified inside a `initContainers` section:
 
 ```yaml
 apiVersion: v1
@@ -1361,7 +1359,7 @@ k8s supports self-healing applications through ReplicaSets and Replication Contr
 
 Kubernetes provides additional support to check the health of applications running within PODs and take necessary actions through Liveness and Readiness Probes.
 
-## cluster maintenance
+## 5. cluster maintenance
 
 take down nodes that are part of your cluster as part of maintenance purposes, kernel or software updates.
 
@@ -1612,7 +1610,7 @@ Here's a quick tip. In the exam, you won't know if what you did is correct or no
 - <https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/recovery.md>
 - <https://www.youtube.com/watch?v=qRPNuT080Hk>
 
-## security in k8s
+## 6. security in k8s
 
 security primitives. the hosts that hold the cluster itself: all access to these hosts must be secured, root access disabled, password based access disabled (only ssh key authentication)...
 
@@ -2380,7 +2378,7 @@ spec:
         port: 80
 ```
 
-## storage
+## 7. storage
 
 ### storage on docker
 
@@ -2680,7 +2678,7 @@ provisioner: kubernetes.io/no-provisioner
 volumeBindingMode: WaitForFirstConsumer
 ```
 
-## networking
+## 8. networking
 
 ### linux networking basics
 
@@ -3375,7 +3373,7 @@ spec:
 #controlplane $
 ```
 
-## design and install k8s cluster
+## 9. design and install k8s cluster
 
 - kube api listes on 6443; use a load balancer to split traffic between several master nodes. they can both be active at the same time
 - scheduler/controller manager: between the 2 nodes, one must be active and the other on standby. leader-elect
@@ -3417,7 +3415,7 @@ use the `etcdctl` utility to store and retrieve data. there are to etcdctl versi
 
 kubernetes the hard way: <https://www.youtube.com/watch?v=uUupRagM7m0&list=PL2We04F3Y_41jYdadX55fdJplDvgNGENo>; <https://github.com/mmumshad/kubernetes-the-hard-way>
 
-## kubernetes the kubeadm way
+## 10. kubernetes the kubeadm way
 
 1. several nodes (1 master, 2 nodes)
 2. install container runtime - docker
@@ -3496,7 +3494,7 @@ sudo chmod a+x /usr/local/bin/weave
 
 `kubeadm token create --print-join-command`
 
-## end to end section
+## 11. end to end section
 
 <https://www.youtube.com/watch?v=-ovJrIIED88&list=PL2We04F3Y_41jYdadX55fdJplDvgNGENo&index=18>
 
@@ -3504,7 +3502,7 @@ golang must be installed: `go get -u k8s.io/test-infra/kubetest`; run `kubetest 
 
 `kubetest --test --provider=skeleton --test_args="--ginkgo.focus=Secrets" > testout1` or `kubetest --test --provider=skeleton --test_args="--ginkgo.focus=\[Conformance\]" > testout1`
 
-## troubleshooting
+## 12. troubleshooting
 
 ### app failure
 
@@ -3680,7 +3678,7 @@ it seems obvious at this point, but... kubelet = kube-apiserver
 
 - `kubectl -n kube-system get ep kube-dns`
 
-## other topics
+## 13. other topics
 
 ### JSON PATH in k8s
 

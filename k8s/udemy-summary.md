@@ -84,3 +84,9 @@ to limi resources in a ns, create a **resource quota**.
 services enable communication between components and outside the app. they help us connect apps with other apps/users.
 
 - <https://kubernetes.io/docs/concepts/overview/components/>
+
+## services
+
+- node-port: the service makes an internal port accesible on a port on the node
+- clusterIP: the service creates a virtual IP inside the cluster to enable communication between services, for instance, fron end and backend servers
+- load balancer: it creates a load balancer for our app in supported cloud providers
