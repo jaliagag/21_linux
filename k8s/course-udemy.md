@@ -1312,7 +1312,7 @@ InitContainers: in a multi-contiainer pod, each container is expected to run a p
 
 at imes you may want to run a process that runs to completion in a container, that is a task that will be run only one time when the pod is first created, or a process that waits for an external service or database to be up before the actual app starts. that's where **initContainers** come in.
 
-a initContainer is configured in a pod like all othe rcontainers, except that it is specified inside a `initContainers` section:
+a initContainer is configured in a pod like all other containers, except that it is specified inside a `initContainers` section:
 
 ```yaml
 apiVersion: v1
