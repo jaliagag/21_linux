@@ -21,6 +21,7 @@
 - `kubectl drain <nodeName>` also cordons it
 - `kubectl uncordon <nodeName>` gets the back into the pool to receive pods
 - run ad hoc command on container: `kubectl exec -it ubuntu-sleeper -- date -s '19 APR 2012 11:14:00'`
+- switch to anothe ns: `kubectl config set-context $(kubectl config current-context) --namespace=dev`
 
 ## create docs
 

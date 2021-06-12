@@ -512,7 +512,7 @@ services are k8s objects with many uses. one of then is to listen to a port on t
 
 ![027](./assets/027.JPG)
 
-we can't reach the web page on the POD, which has a private IP 10.244.0.2; we can create a service on the node that listens to requests on port XXX; once the node reciebes a request on a certain port, the service will "translate" the address and reach the pod.
+we can't reach the web page on the POD, which has a private IP 10.244.0.2; we can create a service on the node that listens to requests on port XXX; once the node recieves a request on a certain port, the service will "translate" the address and reach the pod.
 
 this is known as a **node-port** service - the service listens to a port on the node and forwards requests to the POD.
 
