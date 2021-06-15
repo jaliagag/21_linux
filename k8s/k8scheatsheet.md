@@ -57,3 +57,22 @@
 ## etcdctl
 
 - `etcdctl get` : get keyts stored
+
+### Performing Backup
+
+- `ETCDCTL_API=3 etcdctl snapshot save snapshot.db` taking snapshot
+- `ETCDCTL_API=3 etcdctl snapshot status snapshot.db` checking status
+- `ETCDCTL_API=3 etcdctl snapshot save /opt/snapshot-pre-boot.db --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key` --> Snapshot saved at /opt/snapshot-pre-boot.db
+
+restoring
+
+- stop the kube api server service `service kube-apiserver stop` - we need to restart the etcd cluster and the kubeapi server depends on it.
+  - `ETCDCTL_API=3 etcdctl snapshot restore snapshot.db --data-dir /var/lib/etcd-from-backup` when restoring, etcdctl initialices a new cluster config and configures the members of etcd as new members in a new cluster. this is to prevent a new member from joining an existing cluster - on this example, the file at the end of the command is created. then we need to configure the etcd.servive to use that file as the new --data-dir.
+  - `systemctl daemon-reload`
+  - `service etcd restart`
+  - `service kube-apiserver start`
+
+## usr management
+
+- `kubectl create serviceaccount <name>`
+- `kubectl get serviceaccount`

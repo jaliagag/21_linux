@@ -1365,7 +1365,7 @@ take down nodes that are part of your cluster as part of maintenance purposes, k
 
 say a node goes down - the pods are not accessible. if there are enough replicas, app may remain accesible. if the node came back online immediately, the kubelet process starts and the pods come back online. however if the node was down for more than five minites, the pods are terminated - k8s considers them _dead_.
 
-if the pod are part of a replica set then they are recreated on other nodes. the time it waits for a pod to come back online is known as the _pod eviction timeout_, and it's set in the control manager with a default value of 5 minutes `kube-controller-manager --pod-eviction-timeout=5m0s ...`. how long does the master node wait to consider the node dead.
+if the pods are part of a replica set then they are recreated on other nodes. the time it waits for a pod to come back online is known as the _pod eviction timeout_, and it's set in the control manager with a default value of 5 minutes `kube-controller-manager --pod-eviction-timeout=5m0s ...`. how long does the master node wait to consider the node dead.
 
 when the pod comes back online, it comes back without any pods scheduled on it. if we know that the upgrade might take longer than the scheduled time to come back, we can drain the node `kubectl drain <nodeName>` - workloads are moved to other nodes in the cluster (actually pods are terminated and recreated on the new node). the node is also marked as unschedulable until you remove the restriction. to allow pods to be scheduled on the node `kubectl uncordon <nodeName>`.
 
@@ -1403,7 +1403,7 @@ k8s core components:
 - kube-apiserver
 - controller-manager
 - kube-scheduler
-- kubeclt
+- kubelet
 - kube-proxy
 - kubectl
 
@@ -1447,7 +1447,7 @@ then the worker nodes will have kubelet upgraded. first we have to empty them:
 kubectl drain node1 <<<--- reschedule pod to other nodes and marks the node as unschedulable
 apt upgrade -y kubeadm=1.12.0-00
 apt upgrade -y kubelet=1.12.0-00
-kubeadm upgrade node ocnfig --kubelet-version v1.12.0
+kubeadm upgrade node config --kubelet-version v1.12.0
 systemctl restart kubelet
 kubectl uncordon node1
 ```
@@ -1585,9 +1585,9 @@ With this change, /var/lib/etcd on the container points to /var/lib/etcd-from-ba
 
 When this file is updated, the ETCD pod is automatically re-created as this is a static pod placed under the /etc/kubernetes/manifests directory.
 
-Note: as the ETCD pod has changed it will automatically restart, and also kube-controller-manager and kube-scheduler. Wait 1-2 to mins for this pods to restart. You can run a watch "docker ps | grep etcd" command to see when the ETCD pod is restarted.
+Note: as the ETCD pod has changed it will automatically restart, and also kube-controller-manager and kube-scheduler. Wait 1-2 to mins for this pods to restart. You can run a `watch "docker ps | grep etcd"` command to see when the ETCD pod is restarted.
 
-Note2: If the etcd pod is not getting Ready 1/1, then restart it by kubectl delete pod -n kube-system etcd-controlplane and wait 1 minute.
+Note2: If the etcd pod is not getting Ready 1/1, then restart it by `kubectl delete pod -n kube-system etcd-controlplane` and wait 1 minute.
 
 Note3: This is the simplest way to make sure that ETCD uses the restored data after the ETCD pod is recreated. You don't have to change anything else.
 
@@ -1614,7 +1614,7 @@ Here's a quick tip. In the exam, you won't know if what you did is correct or no
 
 security primitives. the hosts that hold the cluster itself: all access to these hosts must be secured, root access disabled, password based access disabled (only ssh key authentication)...
 
-securing k8s components. kube-apiserver is at the center of all operation in k8s. controlling access to the kube-apiserver is the first line of defense. we need to make two types of decisions. who has access to the cluster and what can they do.
+securing k8s components. kube-apiserver is at the center of all operation in k8s. **controlling access to the kube-apiserver is the first line of defense**. we need to make two types of decisions. who has access to the cluster and what can they do.
 
 1. who has access: it depends on the authentication method. username/passwd, username/token, certificates, external authentication (ldap), service accounts (for machines)
 2. what can they do: RBAC (users are associated to groups with certain permissions), ABAC (attributes), node authorization, webhook mode...
@@ -1668,24 +1668,24 @@ Edit the kube-apiserver static pod configured by kubeadm to pass in the user det
 apiVersion: v1
 kind: Pod
 metadata:
-name: kube-apiserver
-namespace: kube-system
-spec:
-containers:
-- command:
-  - kube-apiserver
-    <content-hidden>
-  image: k8s.gcr.io/kube-apiserver-amd64:v1.11.3
   name: kube-apiserver
-  volumeMounts:
-  - mountPath: /tmp/users
+  namespace: kube-system
+spec:
+  containers:
+  - command:
+    - kube-apiserver
+      <content-hidden>
+    image: k8s.gcr.io/kube-apiserver-amd64:v1.11.3
+    name: kube-apiserver
+    volumeMounts:
+    - mountPath: /tmp/users
+      name: usr-details
+      readOnly: true
+  volumes:
+  - hostPath:
+      path: /tmp/users
+      type: DirectoryOrCreate
     name: usr-details
-    readOnly: true
-volumes:
-- hostPath:
-    path: /tmp/users
-    type: DirectoryOrCreate
-  name: usr-details
 ```
 
 Modify the kube-apiserver startup options to include the basic-auth file
@@ -1758,7 +1758,7 @@ But the lock is public and may be shared with others but they can only lock some
 
 let’s look at an even simpler use case of securing SSH access to servers through key pairs. You have a server in your environment that you need access to. You don't want to use passwords as they're too risky. So you decide to use key pairs you generate a public and private key pair. You can do this by running the ssh_keygen command. It creates two files. Id_rsa is the private key and id_rsa.pub is the public key. Well, not a public key, a public lock. You then secure your server by locking down all access to it, except through a door that is locked using your public lock. It's usually done by adding an entry with your public key into the servers .ssh authorized_keys file.
 
-So you see the look is public and anyone can attempt to break through. But as long as no one gets their hands on your private key, which is safe with you on your laptop, no one can gain access to the server. When you try to SSH you specify the location of your private key in your SSH command.
+the lock is public and anyone can attempt to break through. But as long as no one gets their hands on your private key, which is safe with you on your laptop, no one can gain access to the server. When you try to SSH you specify the location of your private key in your SSH command.
 
 You see the problem we had earlier with symmetric encryption was that the key used to encrypt data had to be sent to the server over the network along with the encrypted data. And so there is a risk of the hacker getting the key to decrypt the data.
 
@@ -1819,15 +1819,15 @@ The way this works is you generate a **certificate signing a request or CSR** us
 
 `openssl req -new -key my-bank.key -out my-bank.csr -subj "/C=US/ST=CA/O=MyOrg, Inc./CN=mydomain.com"`
 
-This generates a my-bank.csr file which is the certificate signing request that should be sent to the CA for signing. It looks like this the certificate authorities verify your details and once it checks out they sign the certificate and send it back to you.
+This generates a _my-bank.csr file which is the certificate signing request that should be sent to the CA for signing_ . It looks like this the certificate authorities verify your details and once it checks out they sign the certificate and send it back to you.
 
-You now have a certificate signed by a CA that the process trust. if hacker tried to get his certificate signed the same way he would fail during the validation phase and his certificate would be rejected by the CA.
+You now have a _certificate signed by a CA_ that the process trust. if hacker tried to get his certificate signed the same way he would fail during the validation phase and his certificate would be rejected by the CA.
 
 So the Web site that he's hosting won't have a valid certificate. The CAs use different techniques to make sure that you are the actual owner of that domain.
 
 You now have a certificate signed by CA that the browsers trust. But how do the browsers know that the CA itself was legitimate. For example what if the certificate was signed by a fake CA.
 
-In this case our certificate was signed by Symantec. How would the browser know Symantec is a valid CA and that the certificate was infact signed by Symantec and not by someone who says they are semantec. The CA is themselves have a set of public and private key pairs. The CA is use their private keys to sign the certificates the public keys of all the CAs are built in to the browsers. The browser uses the public key of the CA to validate that the certificate was actually signed by the CA themselves.
+In this case our certificate was signed by Symantec. How would the browser know Symantec is a valid CA and that the certificate was infact signed by Symantec and not by someone who says they are Symantec. The CAs have a set of public and private key pairs. The CA uses its private keys to sign the certificates **the public keys of all the CAs are built in to the browsers**. The browser uses the public key of the CA to validate that the certificate was actually signed by the CA themselves.
 
 You can actually see them in the settings of your web browser, under certificates. They are under trusted CAs tab.
 
@@ -1837,7 +1837,7 @@ However they don't help you validate sites hosted privately say within your orga
 
 Most of these companies listed here have a private offering of their services. A CA server that you can deploy internally within your company. You can then have the public key of your internal CA server installed on all your employees browsers and establish secure connectivity within your organization so let's summarize real quick.
 
-We have seen why you may want to encrypt messages being sent over a network to encrypt messages. We use asymmetric encryption with a pair of public and private keys and admin uses a pair of keys to secure SSH connectivity to the servers. The server uses a pair of keys to secure HTTPS traffic. For this the server first sends a certificate signing request to a CA. The CA uses its private key to sign the CSR. Remember all users have a copy of the CAs public key.
+We have seen why you may want to encrypt messages being sent over a network to encrypt messages. We use asymmetric encryption with a pair of public and private keys and admin uses a pair of keys to secure SSH connectivity to the servers. _The server uses a pair of keys to secure HTTPS traffic. For this the server first sends a certificate signing request to a CA. The CA uses its private key to sign the CSR_. Remember all users have a copy of the CAs public key.
 
 The signed certificate is then sent back to the server the server configure is the web application with the signed certificate. Whenever a user accesses the web application the server first sends the certificate with its public key.
 
