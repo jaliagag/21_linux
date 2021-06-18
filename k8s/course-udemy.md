@@ -2141,6 +2141,8 @@ rather than specifying the ca full path, we can specify a field called **certifi
 
 `kube proxy` (used to enable connectivity between pods and services accross different nodes in the cluster) vs `kubectl proxy` (http proxy service created by kubectl utility to access the kube api server)
 
+All resources in k8s are grouped into different API groups. resources have verbs, actions.
+
 ### authorization
 
 what can users do once they've logged into the cluster. for instance, restricting certain accounts to be able to only view, rather than also being able to modify. restricting users to their namespaces can help us accomplish this. authorization mechanisms:
